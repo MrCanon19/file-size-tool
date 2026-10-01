@@ -140,7 +140,7 @@ h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.02em; }
 .seg { align-items: center; font-size: 13px; }
 .seg .seg-label { flex: none; padding: 0 4px 0 8px; color: var(--muted); font-weight: 600; white-space: nowrap; }
 .seg label span { padding: 5px 10px; font-weight: 600; }
-.seg small { font-weight: 400; opacity: 0.8; }
+.seg small { font-weight: 400; }
 .seg input:checked + span { background: var(--accent-soft); color: var(--text); }
 
 .card {
@@ -279,6 +279,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 #s-result .ok { padding: 12px; border-radius: 9px; background: var(--ok-bg); color: var(--ok-text); overflow-wrap: anywhere; }
 #s-result .ok b { font-variant-numeric: tabular-nums; }
 #s-result .err { padding: 12px; border-radius: 9px; background: var(--err-bg); color: var(--err-text); }
+.primary-link,
 #s-result a.primary {
   display: inline-block;
   justify-self: start;
@@ -289,6 +290,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   font-weight: 600;
   text-decoration: none;
 }
+.primary-link:hover,
 #s-result a.primary:hover { background: var(--accent-hover); }
 
 footer { color: var(--muted); font-size: 13px; }

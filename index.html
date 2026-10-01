@@ -15,6 +15,17 @@
   </script>
   <link rel="stylesheet" href="style.css">
   <link rel="canonical" href="https://waga.michalmarini.pl/">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pl_PL">
+  <meta property="og:url" content="https://waga.michalmarini.pl/">
+  <meta property="og:title" content="Waga plików">
+  <meta property="og:description" content="Wygeneruj plik o dowolnej wadze albo zmień wagę istniejącego pliku. Wszystko w przeglądarce, bez wysyłania plików.">
+  <meta property="og:image" content="https://waga.michalmarini.pl/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Waga plików: plik o dokładnej wadze albo zmiana wagi, np. z 95 MB na 90 MB">
+  <meta name="twitter:card" content="summary_large_image">
 </head>
 <body>
   <main>
@@ -102,7 +113,7 @@
         </label>
         <label class="field unit">
           <span>&nbsp;</span>
-          <select id="g-unit">
+          <select id="g-unit" aria-label="Jednostka wagi">
             <option value="0">B</option>
             <option value="1">KB</option>
             <option value="2" selected>MB</option>
@@ -144,7 +155,7 @@
         </label>
         <label class="field unit">
           <span>&nbsp;</span>
-          <select id="r-unit">
+          <select id="r-unit" aria-label="Jednostka docelowej wagi">
             <option value="0">B</option>
             <option value="1">KB</option>
             <option value="2" selected>MB</option>
