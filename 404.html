@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Waga plików: nowy adres</title>
+  <link rel="canonical" href="https://waga.michalmarini.pl/">
+  <meta name="robots" content="noindex">
+  <meta http-equiv="refresh" content="0; url=https://waga.michalmarini.pl/">
+  <script>
+    // Drop the old COOP/COEP service worker, then move to the new address keeping query and hash.
+    if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+    location.replace('https://waga.michalmarini.pl/' + location.search + location.hash);
+  </script>
+</head>
+<body>
+  <p>Strona przeniosła się na <a href="https://waga.michalmarini.pl/">waga.michalmarini.pl</a>.</p>
+</body>
+</html>
