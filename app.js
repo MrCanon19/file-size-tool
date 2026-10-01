@@ -32,10 +32,13 @@ const els = {
   generate: $('generate'), gName: $('g-name'), gExt: $('g-ext'), gSize: $('g-size'), gUnit: $('g-unit'),
   gExtSelect: $('g-ext-select'), gExtCustom: $('g-ext-custom-field'),
   gFill: $('g-fill'), gNote: $('g-note'), gRun: $('g-run'),
-  resize: $('resize'), drop: $('drop'), rFile: $('r-file'), rInfo: $('r-info'), rSize: $('r-size'),
-  rUnit: $('r-unit'), rExact: $('r-exact'), rNote: $('r-note'), rRun: $('r-run'),
+  gPresets: $('g-presets'),
+  resize: $('resize'), drop: $('drop'), dropTitle: $('drop-title'), dropSub: $('drop-sub'), rFile: $('r-file'),
+  rSize: $('r-size'), rUnit: $('r-unit'), rPresets: $('r-presets'), rExact: $('r-exact'), rNote: $('r-note'), rRun: $('r-run'),
   status: $('status'), sText: $('s-text'), sBar: $('s-bar'), sCancel: $('s-cancel'), sResult: $('s-result'),
+  theme: $('theme'), pageDrop: $('page-drop'),
 };
+const checked = (group) => group.querySelector('input:checked').value;
 
 let busy = false;
 let currentFile = null;
@@ -43,7 +46,7 @@ let resultUrl = null;
 
 // ---------- helpers ----------
 
-const base = () => Number(els.base.value);
+const base = () => Number(checked(els.base));
 
 function parseSize(value, unit) {
   const n = parseFloat(String(value).replace(',', '.').replace(/\s/g, ''));
@@ -769,6 +772,7 @@ async function generate(ext, target, fill) {
 
 function setProgress(p) {
   els.sBar.style.width = p == null ? '0' : `${Math.round(p * 100)}%`;
+  els.sBar.parentElement.classList.toggle('indeterminate', p == null && busy);
 }
 
 function startStatus(text) {
@@ -780,6 +784,7 @@ function startStatus(text) {
   els.sResult.textContent = '';
   els.sText.textContent = text;
   setProgress(null);
+  revealStatus();
 }
 
 function endStatus() {
@@ -787,24 +792,39 @@ function endStatus() {
   els.gRun.disabled = false;
   els.sCancel.hidden = true;
   els.sText.textContent = '';
+  els.sBar.parentElement.classList.remove('indeterminate');
   updateResizeNote();
 }
 
-function showResult(blob, name, extra = '') {
+// On small screens the status card can sit below the fold.
+function revealStatus() {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  els.status.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+}
+
+function showResult(blob, name, extra = '', fromSize = null) {
   if (resultUrl) URL.revokeObjectURL(resultUrl);
   resultUrl = URL.createObjectURL(blob);
   const ok = document.createElement('div');
   ok.className = 'ok';
-  ok.textContent = `Gotowe: ${name}, ${fmt(blob.size)} (${fmtBytes(blob.size)}).${extra ? ` ${extra}` : ''}`;
+  const size = document.createElement('b');
+  size.textContent = fmt(blob.size);
+  let change = '';
+  if (fromSize) {
+    const pct = Math.round((blob.size / fromSize - 1) * 100);
+    change = ` Było ${fmt(fromSize)}, zmiana ${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct)}%.`;
+  }
+  ok.append(`Gotowe: ${name}, `, size, ` (${fmtBytes(blob.size)}).${change}${extra ? ` ${extra}` : ''}`);
   const a = document.createElement('a');
   a.className = 'primary';
   a.href = resultUrl;
   a.download = name;
-  a.textContent = 'Pobierz plik';
+  a.textContent = 'Pobierz ponownie';
   els.sResult.replaceChildren(ok, a);
   els.sResult.hidden = false;
   setProgress(1);
   a.click();
+  revealStatus();
 }
 
 function showError(err) {
@@ -815,6 +835,7 @@ function showError(err) {
   els.sResult.replaceChildren(div);
   els.sResult.hidden = false;
   setProgress(null);
+  revealStatus();
 }
 
 function setNote(el, text, kind = '') {
@@ -891,16 +912,54 @@ function updateResizeNote() {
 
 function setFile(file) {
   currentFile = file;
-  els.rInfo.hidden = !file;
-  if (file) {
-    els.rInfo.innerHTML = '';
-    const name = document.createElement('div');
-    name.textContent = file.name;
-    const size = document.createElement('div');
-    size.innerHTML = `Waga: <b>${fmt(file.size)}</b> (${fmtBytes(file.size)})`;
-    els.rInfo.append(name, size);
-  }
+  els.drop.classList.toggle('has-file', !!file);
+  els.rPresets.hidden = !file;
+  els.dropTitle.textContent = file ? file.name : 'Upuść plik tutaj';
+  els.dropSub.textContent = file
+    ? `${fmt(file.size)} (${fmtBytes(file.size)}). Kliknij albo upuść inny, żeby zmienić.`
+    : 'albo kliknij, żeby wybrać';
+  markPreset(els.rPresets);
   updateResizeNote();
+}
+
+// ---------- quick sizes ----------
+
+// Writes bytes into a size field using the largest unit that keeps the number readable.
+function setSizeField(input, unitSelect, bytes) {
+  let unit = 0;
+  while (unit < 3 && bytes >= base() ** (unit + 1)) unit++;
+  const value = Math.round((bytes / base() ** unit) * 100) / 100;
+  input.value = value.toLocaleString('pl-PL', { maximumFractionDigits: 2, useGrouping: false });
+  unitSelect.value = String(unit);
+}
+
+// Highlights the chip that matches the current field value, if any.
+function markPreset(box) {
+  const gen = box === els.gPresets;
+  const target = gen ? parseSize(els.gSize.value, els.gUnit.value) : parseSize(els.rSize.value, els.rUnit.value);
+  for (const chip of box.querySelectorAll('button')) {
+    const bytes = chip.dataset.factor
+      ? (currentFile ? Math.round(currentFile.size * Number(chip.dataset.factor)) : null)
+      : parseSize(chip.dataset.size, chip.dataset.unit);
+    const near = target && bytes && Math.abs(target - bytes) <= Math.max(1, bytes * 0.005);
+    chip.setAttribute('aria-pressed', String(!!near));
+  }
+}
+
+function onPreset(box, input, unitSelect, after) {
+  box.addEventListener('click', (e) => {
+    const chip = e.target.closest('button');
+    if (!chip) return;
+    if (chip.dataset.factor) {
+      if (!currentFile) return;
+      setSizeField(input, unitSelect, Math.round(currentFile.size * Number(chip.dataset.factor)));
+    } else {
+      input.value = chip.dataset.size;
+      unitSelect.value = chip.dataset.unit;
+    }
+    after();
+    markPreset(box);
+  });
 }
 
 async function runGenerate() {
@@ -968,7 +1027,7 @@ async function runResize() {
     }
 
     if (exact && outBlob.size < plan.target && !isZipLike(outExt)) outBlob = await padTo(outBlob, plan.target, outExt);
-    showResult(outBlob, `${stem}-${fmt(plan.target).replace(/\s/g, '').replace(',', '_')}.${outExt}`, extra);
+    showResult(outBlob, `${stem}-${fmt(plan.target).replace(/\s/g, '').replace(',', '_')}.${outExt}`, extra, file.size);
   } catch (err) {
     showError(err);
   } finally {
@@ -977,25 +1036,48 @@ async function runResize() {
 }
 
 function applyMode() {
-  const gen = els.mode.value === 'generate';
+  const gen = checked(els.mode) === 'generate';
   els.generate.hidden = !gen;
   els.resize.hidden = gen;
   if (!busy) els.status.hidden = true;
 }
+
+function setMode(value) {
+  els.mode.querySelector(`input[value="${value}"]`).checked = true;
+  applyMode();
+}
+
 els.mode.addEventListener('change', applyMode);
 els.base.addEventListener('change', () => {
   updateGenerateNote();
   setFile(currentFile);
+  markPreset(els.gPresets);
 });
-[els.gExt, els.gSize, els.gUnit].forEach((el) => el.addEventListener('input', updateGenerateNote));
+[els.gExt, els.gSize, els.gUnit].forEach((el) => el.addEventListener('input', () => {
+  updateGenerateNote();
+  markPreset(els.gPresets);
+}));
 els.gExtSelect.addEventListener('change', () => {
   els.gExtCustom.hidden = els.gExtSelect.value !== 'other';
   if (!els.gExtCustom.hidden) els.gExt.focus();
   updateGenerateNote();
 });
-[els.rSize, els.rUnit].forEach((el) => el.addEventListener('input', updateResizeNote));
+[els.rSize, els.rUnit].forEach((el) => el.addEventListener('input', () => {
+  updateResizeNote();
+  markPreset(els.rPresets);
+}));
+onPreset(els.gPresets, els.gSize, els.gUnit, updateGenerateNote);
+onPreset(els.rPresets, els.rSize, els.rUnit, updateResizeNote);
 els.gRun.addEventListener('click', runGenerate);
 els.rRun.addEventListener('click', runResize);
+
+// Enter in a text field starts the action, like submitting a form.
+els.generate.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches('input') && !busy) runGenerate();
+});
+els.resize.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches('input[inputmode]') && !els.rRun.disabled) runResize();
+});
 els.rFile.addEventListener('change', () => setFile(els.rFile.files[0] ?? null));
 els.sCancel.addEventListener('click', () => {
   if (ffmpeg) {
@@ -1022,7 +1104,59 @@ els.drop.addEventListener('drop', (e) => {
   if (file) setFile(file);
 });
 
+// A file dropped anywhere on the page switches to resizing it.
+let dragDepth = 0;
+const draggingFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+window.addEventListener('dragenter', (e) => {
+  if (!draggingFiles(e)) return;
+  dragDepth++;
+  if (!busy && !els.drop.contains(e.target)) els.pageDrop.hidden = false;
+});
+window.addEventListener('dragleave', () => {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (!dragDepth) els.pageDrop.hidden = true;
+});
+window.addEventListener('dragover', (e) => {
+  if (draggingFiles(e)) e.preventDefault();
+});
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dragDepth = 0;
+  els.pageDrop.hidden = true;
+  const file = e.dataTransfer?.files[0];
+  if (!file || busy || els.drop.contains(e.target)) return;
+  setMode('resize');
+  setFile(file);
+  els.rSize.focus();
+});
+
+// ---------- theme ----------
+
+const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+const isDark = () => document.documentElement.dataset.theme
+  ? document.documentElement.dataset.theme === 'dark'
+  : darkQuery.matches;
+
+function syncThemeButton() {
+  const label = isDark() ? 'Włącz tryb jasny' : 'Włącz tryb ciemny';
+  els.theme.setAttribute('aria-label', label);
+  els.theme.title = label;
+  for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+    meta.content = isDark() ? '#111317' : '#f4f5f7';
+  }
+}
+
+els.theme.addEventListener('click', () => {
+  const next = isDark() ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('theme', next); } catch {}
+  syncThemeButton();
+});
+darkQuery.addEventListener('change', syncThemeButton);
+syncThemeButton();
+
 // The browser may restore form values after a reload.
 applyMode();
 els.gExtCustom.hidden = els.gExtSelect.value !== 'other';
 updateGenerateNote();
+markPreset(els.gPresets);
