@@ -440,6 +440,96 @@ async function shrinkMedia(file, ext, target, onStep) {
   }
 }
 
+// ---------- PDF ----------
+
+// Level 0 only rewrites the structure (fonts, streams, duplicate images); higher levels
+// recompress images to JPEG at a lower resolution. Text and vectors stay intact.
+const PDF_LEVELS = [null, [300, 0.4], [200, 0.6], [150, 0.76], [110, 0.9], [72, 1.3], [50, 2]];
+
+function pdfSettings(level) {
+  const args = [
+    '-sDEVICE=pdfwrite', '-dNOPAUSE', '-dBATCH', '-dSAFER', '-dCompatibilityLevel=1.6',
+    '-dDetectDuplicateImages=true', '-dCompressFonts=true', '-dSubsetFonts=true',
+  ];
+  const step = PDF_LEVELS[level];
+  if (!step) {
+    args.push('-dDownsampleColorImages=false', '-dDownsampleGrayImages=false', '-dDownsampleMonoImages=false');
+    return { args, ps: null };
+  }
+  const [res, q] = step;
+  args.push(
+    '-dDownsampleColorImages=true', '-dDownsampleGrayImages=true', '-dDownsampleMonoImages=true',
+    '-dColorImageDownsampleType=/Bicubic', '-dGrayImageDownsampleType=/Bicubic',
+    `-dColorImageResolution=${res}`, `-dGrayImageResolution=${res}`, `-dMonoImageResolution=${Math.max(res * 2, 300)}`,
+    '-dColorImageDownsampleThreshold=1.0', '-dGrayImageDownsampleThreshold=1.0',
+    '-dPassThroughJPEGImages=false', '-dPassThroughJPXImages=false',
+    '-dAutoFilterColorImages=false', '-dAutoFilterGrayImages=false',
+    '-dColorImageFilter=/DCTEncode', '-dGrayImageFilter=/DCTEncode',
+  );
+  const dict = `<< /QFactor ${q} /Blend 1 /HSamples [2 1 1 2] /VSamples [2 1 1 2] >>`;
+  return { args, ps: `<< /ColorImageDict ${dict} /GrayImageDict ${dict} >> setdistillerparams` };
+}
+
+let pdfWorker = null;
+let pdfJobId = 0;
+
+function runGhostscript(input, level, onPage) {
+  pdfWorker ??= new Worker(new URL('./pdf-worker.js', import.meta.url), { type: 'module' });
+  const id = ++pdfJobId;
+  const { args, ps } = pdfSettings(level);
+  return new Promise((resolve, reject) => {
+    let total = 0;
+    const worker = pdfWorker;
+    const onMessage = ({ data }) => {
+      if (data.id !== id) return;
+      if (data.type === 'pages') total = data.total;
+      else if (data.type === 'page') onPage(data.page, total);
+      else {
+        worker.removeEventListener('message', onMessage);
+        worker.removeEventListener('error', onError);
+        data.type === 'done' ? resolve(data.bytes) : reject(new Error(data.message));
+      }
+    };
+    const onError = (e) => reject(new Error(e.message || 'Nie udało się uruchomić Ghostscript.'));
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', onError);
+    worker.cancel = () => reject(new Error('terminate'));
+    worker.postMessage({ id, args, ps, input: input.slice() });
+  });
+}
+
+async function shrinkPdf(file, target, onStep) {
+  const input = new Uint8Array(await file.arrayBuffer());
+  const tried = {};
+  let attempt = 0;
+  const run = async (level) => {
+    attempt++;
+    const label = level ? `kompresja obrazów ${level}/${PDF_LEVELS.length - 1}` : 'porządkowanie struktury';
+    onStep(`PDF: ${label} (próba ${attempt})${attempt === 1 ? '. Pierwsze użycie pobiera Ghostscript, ok. 15 MB' : ''}…`);
+    setProgress(0);
+    const out = await runGhostscript(input, level, (page, total) => {
+      if (total) setProgress(page / total);
+      onStep(`PDF: ${label} (próba ${attempt}), strona ${page}${total ? ` z ${total}` : ''}…`);
+    });
+    return (tried[level] = out);
+  };
+  const fits = (level) => tried[level].length <= target;
+
+  if ((await run(0)).length <= target) return tried[0];
+  // Smallest level that fits = the best quality that still fits.
+  let lo = 1, hi = PDF_LEVELS.length - 1, best = null;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    await run(mid);
+    if (fits(mid)) { best = mid; hi = mid - 1; } else lo = mid + 1;
+  }
+  if (best == null) {
+    const smallest = Math.min(...Object.values(tried).map((b) => b.length));
+    throw new Error(`Najmocniej skompresowany PDF ma ${fmt(smallest)}. Mniej się nie da bez usuwania stron albo tekstu.`);
+  }
+  return tried[best];
+}
+
 // ---------- generate ----------
 
 async function canvasImage(mime) {
@@ -635,6 +725,7 @@ function resizePlan() {
   if (is('image', ext)) return { kind: 'image', target, ext };
   if (is('video', ext) || is('audio', ext)) return { kind: 'media', target, ext };
   if (isZipLike(ext)) return { kind: 'zip', target, ext };
+  if (ext === 'pdf') return { kind: 'pdf', target, ext };
   return { kind: 'unsupported', target, ext };
 }
 
@@ -664,7 +755,8 @@ function updateResizeNote() {
     zip: is('officeZip', ext)
       ? ['Spakuję plik mocniej, a jeśli to za mało, zmniejszę zdjęcia w środku. Tekst i dane zostają bez zmian.']
       : ['Spakuję archiwum mocniej, bez zmiany zawartości. Jeśli to za mało, bardziej się nie da.'],
-    unsupported: [`Pliku .${ext || '(bez rozszerzenia)'} nie da się zmniejszyć w przeglądarce bez uszkodzenia. Obsługiwane: zdjęcia (jpg, png, webp, heic), wideo, audio, pliki Office (xlsx, docx, pptx) i ZIP.`, 'err'],
+    pdf: ['Przepiszę PDF przez Ghostscript. Tekst i grafika wektorowa zostają bez zmian, a zdjęcia stracą na jakości i rozdzielczości tylko tyle, ile trzeba. PDF zabezpieczony hasłem nie zadziała.'],
+    unsupported: [`Pliku .${ext || '(bez rozszerzenia)'} nie da się zmniejszyć w przeglądarce bez uszkodzenia. Obsługiwane: PDF, zdjęcia (jpg, png, webp, heic), wideo, audio, pliki Office (xlsx, docx, pptx) i ZIP.`, 'err'],
   };
   const [text, kind] = notes[plan.kind];
   setNote(els.rNote, `${text}${plan.target && plan.kind !== 'same' ? ` Cel: ${fmtBytes(plan.target)}.` : ''}`, kind);
@@ -742,6 +834,10 @@ async function runResize() {
       outBlob = new Blob([data]);
       if (e !== ext) extra = `Zapisany jako ${e.toUpperCase()}.`;
       outExt = e;
+    } else if (plan.kind === 'pdf') {
+      els.sCancel.hidden = false;
+      outBlob = new Blob([await shrinkPdf(file, plan.target, onStep)]);
+      els.sCancel.hidden = true;
     }
 
     if (exact && outBlob.size < plan.target && !isZipLike(outExt)) outBlob = await padTo(outBlob, plan.target, outExt);
@@ -773,6 +869,11 @@ els.sCancel.addEventListener('click', () => {
   if (ffmpeg) {
     ffmpeg.terminate();
     ffmpeg = null;
+  }
+  if (pdfWorker) {
+    pdfWorker.cancel?.();
+    pdfWorker.terminate();
+    pdfWorker = null;
   }
 });
 

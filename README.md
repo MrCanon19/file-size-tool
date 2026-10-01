@@ -37,6 +37,7 @@ Wypełnienie trafia tam, gdzie format je toleruje:
 | jpg, webp | niższa jakość, a gdy to za mało, niższa rozdzielczość |
 | png | niższa rozdzielczość |
 | heic | dekodowanie przez heic2any, wynik w **JPG** (przeglądarki nie zapisują HEIC) |
+| pdf | Ghostscript (pdfwrite) w przeglądarce: najpierw samo uporządkowanie struktury, potem coraz mocniejsza kompresja zdjęć (300 → 50 dpi). Wybierany jest najłagodniejszy poziom, który się mieści. Tekst i wektory zostają |
 | xlsx, docx, pptx, odt, ods, epub | mocniejsza kompresja ZIP, potem zmniejszenie zdjęć w środku; dane i tekst bez zmian |
 | zip | mocniejsza kompresja, zawartość bez zmian |
 | wideo | przekodowanie do MP4 (H.264 + AAC) z bitrate dobranym do wagi, ffmpeg.wasm |
@@ -48,7 +49,8 @@ Ograniczenia:
 
 - Wideo kodowane jest w przeglądarce (4 wątki, gdy przeglądarka na to pozwala), czyli wolniej niż w programie na komputerze. Test: 20 s wideo 720p, 22,7 → 10 MB, ok. 100 s na MacBooku. Plik rzędu 100 MB może się liczyć kilkanaście minut lub dłużej. Limit to ok. 1,5 GB.
 - Pliki ZIP i Office powyżej 4 GB nie są obsługiwane (brak ZIP64).
-- Plików zabezpieczonych hasłem, PDF ani formatów nieznanych nie da się zmniejszyć bez uszkodzenia.
+- PDF: pierwsze zmniejszenie pobiera Ghostscript (ok. 15 MB). Test: 8 stron ze zdjęciami, 15,7 → 3 MB w ok. 30 s. PDF zabezpieczony hasłem nie zadziała.
+- Plików zabezpieczonych hasłem ani formatów nieznanych nie da się zmniejszyć bez uszkodzenia.
 - Stare formaty Office (`xls`, `doc`, `ppt`) po powiększeniu mogą zgłosić błąd.
 
 ## Jednostki
@@ -66,6 +68,8 @@ Bez budowania i bez zależności do instalowania. Biblioteki:
 
 - [`@ffmpeg/ffmpeg` 0.12.15 i `@ffmpeg/util` 0.12.2](https://github.com/ffmpegwasm/ffmpeg.wasm) (MIT) są w `vendor/`, żeby worker ładował się z tej samej domeny; rdzeń `@ffmpeg/core` 0.12.10 pobierany z jsDelivr dopiero przy zmniejszaniu wideo i audio,
 - [`fflate`](https://github.com/101arrowz/fflate) 0.8.3 (MIT) i [`heic2any`](https://github.com/alexcorvi/heic2any) 0.0.4 (MIT) z jsDelivr, ładowane na żądanie.
+
+[`@okathira/ghostpdl-wasm`](https://github.com/okathira/ghostpdl-wasm) 1.1.0, czyli Ghostscript w WebAssembly, pobierany z jsDelivr dopiero przy zmniejszaniu PDF. Licencja **AGPL-3.0**: kod źródłowy tej strony jest publiczny, a źródła Ghostscript są w repo okathira/ghostpdl-wasm.
 
 [`coi-serviceworker`](https://github.com/gzuidhof/coi-serviceworker) 0.1.7 (MIT) dodaje nagłówki COOP/COEP, których GitHub Pages nie ustawia. Dzięki temu działa wielowątkowy `@ffmpeg/core-mt`. Przy pierwszej wizycie strona przeładowuje się raz.
 
