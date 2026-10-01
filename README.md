@@ -7,7 +7,7 @@ Strona, która w przeglądarce:
 
 Pliki nie są nigdzie wysyłane. Wszystko liczy się lokalnie w przeglądarce.
 
-Na żywo: https://mrcanon19.github.io/file-size-tool/
+Na żywo: https://waga.michalmarini.pl/ (Netlify). Stary adres https://mrcanon19.github.io/file-size-tool/ przekierowuje tutaj.
 
 ## Generowanie
 
@@ -73,6 +73,16 @@ Bez budowania i bez zależności do instalowania. Biblioteki:
 
 [`@okathira/ghostpdl-wasm`](https://github.com/okathira/ghostpdl-wasm) 1.1.0, czyli Ghostscript w WebAssembly, pobierany z jsDelivr dopiero przy zmniejszaniu PDF. Licencja **AGPL-3.0**: kod źródłowy tej strony jest publiczny, a źródła Ghostscript są w repo okathira/ghostpdl-wasm.
 
-[`coi-serviceworker`](https://github.com/gzuidhof/coi-serviceworker) 0.1.7 (MIT) dodaje nagłówki COOP/COEP, których GitHub Pages nie ustawia. Dzięki temu działa wielowątkowy `@ffmpeg/core-mt`. Przy pierwszej wizycie strona przeładowuje się raz.
+Nagłówki COOP/COEP ustawia Netlify z pliku `_headers`. Dzięki nim działa wielowątkowy `@ffmpeg/core-mt`. Lokalny `python3 -m http.server` ich nie wysyła, więc tam wideo liczy się na jednym wątku.
+
+## Wdrożenie
+
+Strona jest na Netlify (projekt `waga-plikow`), wdrażana ręcznie, bez łączenia repo z Netlify:
+
+```bash
+netlify deploy --prod --dir=. --site=<SITE_ID>
+```
+
+GitHub Pages serwuje branch `gh-pages`, w którym jest tylko strona przekierowująca na nowy adres.
 
 `templates.js` zawiera małe poprawne pliki (heic, mp4, mov, mp3, gif) wygenerowane przez ffmpeg i `sips`.
