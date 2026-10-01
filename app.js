@@ -17,7 +17,7 @@ const FAMILY = {
   officeZip: set('xlsx', 'xlsm', 'docx', 'docm', 'pptx', 'pptm', 'odt', 'ods', 'odp', 'epub'),
   zip: set('zip', 'jar'),
   ole: set('xls', 'doc', 'ppt', 'msg'),
-  text: set('txt', 'csv', 'tsv', 'md', 'json', 'xml', 'html', 'htm', 'svg', 'js', 'css', 'log', 'yaml', 'yml'),
+  text: set('txt', 'csv', 'tsv', 'md', 'json', 'xml', 'html', 'htm', 'svg', 'rtf', 'js', 'css', 'log', 'yaml', 'yml'),
   image: set('jpg', 'jpeg', 'png', 'webp'),
   heic: set('heic', 'heif'),
   video: set('mp4', 'mov', 'm4v', 'webm', 'mkv', 'avi', 'wmv', 'flv', '3gp', 'mpg', 'mpeg', 'ts'),
@@ -30,6 +30,7 @@ const $ = (id) => document.getElementById(id);
 const els = {
   mode: $('mode'), base: $('base'),
   generate: $('generate'), gName: $('g-name'), gExt: $('g-ext'), gSize: $('g-size'), gUnit: $('g-unit'),
+  gExtSelect: $('g-ext-select'), gExtCustom: $('g-ext-custom-field'),
   gFill: $('g-fill'), gNote: $('g-note'), gRun: $('g-run'),
   resize: $('resize'), drop: $('drop'), rFile: $('r-file'), rInfo: $('r-info'), rSize: $('r-size'),
   rUnit: $('r-unit'), rExact: $('r-exact'), rNote: $('r-note'), rRun: $('r-run'),
@@ -613,14 +614,132 @@ function officeEntries(kind) {
   return Object.fromEntries(Object.entries(files).map(([k, v]) => [k, encoder.encode(v)]));
 }
 
-const VALID_GENERATE = set('xlsx', 'docx', 'zip', 'pdf', 'heic', 'mp4', 'm4v', 'mov', 'mp3', 'gif', 'wav', 'png', 'jpg', 'jpeg', 'webp');
+const NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const NS_P = 'http://schemas.openxmlformats.org/presentationml/2006/main';
+const NS_PKG = 'http://schemas.openxmlformats.org/package/2006/relationships';
+const PML = 'application/vnd.openxmlformats-officedocument.presentationml';
+const EMPTY_TREE = '<p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>';
+const rels = (...list) => `${XML}<Relationships xmlns="${NS_PKG}">${list
+  .map(([id, type, target]) => `<Relationship Id="${id}" Type="${REL}/${type}" Target="${target}"/>`).join('')}</Relationships>`;
+
+// Smallest PPTX PowerPoint accepts: one slide, one blank layout, master and theme.
+function pptxEntries() {
+  const ns = `xmlns:a="${NS_A}" xmlns:r="${REL}" xmlns:p="${NS_P}"`;
+  const solid = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>';
+  const colors = [['dk1', '000000'], ['lt1', 'FFFFFF'], ['dk2', '44546A'], ['lt2', 'E7E6E6'], ['accent1', '4472C4'],
+    ['accent2', 'ED7D31'], ['accent3', 'A5A5A5'], ['accent4', 'FFC000'], ['accent5', '5B9BD5'], ['accent6', '70AD47'],
+    ['hlink', '0563C1'], ['folHlink', '954F72']].map(([n, c]) => `<a:${n}><a:srgbClr val="${c}"/></a:${n}>`).join('');
+  const font = '<a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/>';
+  const files = {
+    '[Content_Types].xml': `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`
+      + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+      + '<Default Extension="xml" ContentType="application/xml"/>'
+      + `<Override PartName="/ppt/presentation.xml" ContentType="${PML}.presentation.main+xml"/>`
+      + `<Override PartName="/ppt/slides/slide1.xml" ContentType="${PML}.slide+xml"/>`
+      + `<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="${PML}.slideLayout+xml"/>`
+      + `<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="${PML}.slideMaster+xml"/>`
+      + '<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>'
+      + '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>'
+      + '</Types>',
+    '_rels/.rels': rels(['rId1', 'officeDocument', 'ppt/presentation.xml'], ['rId2', 'extended-properties', 'docProps/app.xml']),
+    'docProps/app.xml': APP_XML,
+    'ppt/presentation.xml': `${XML}<p:presentation ${ns}>`
+      + '<p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>'
+      + '<p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst>'
+      + '<p:sldSz cx="12192000" cy="6858000"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>',
+    'ppt/_rels/presentation.xml.rels': rels(['rId1', 'slideMaster', 'slideMasters/slideMaster1.xml'],
+      ['rId2', 'slide', 'slides/slide1.xml'], ['rId3', 'theme', 'theme/theme1.xml']),
+    'ppt/slides/slide1.xml': `${XML}<p:sld ${ns}><p:cSld>${EMPTY_TREE}`
+      + '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Tekst"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
+      + '<p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="8000000" cy="1200000"/></a:xfrm>'
+      + '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>'
+      + '<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="pl-PL" sz="4000"/><a:t>Plik testowy</a:t></a:r></a:p></p:txBody>'
+      + '</p:sp></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>',
+    'ppt/slides/_rels/slide1.xml.rels': rels(['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml']),
+    'ppt/slideLayouts/slideLayout1.xml': `${XML}<p:sldLayout ${ns} type="blank" preserve="1">`
+      + `<p:cSld name="Pusty">${EMPTY_TREE}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`,
+    'ppt/slideLayouts/_rels/slideLayout1.xml.rels': rels(['rId1', 'slideMaster', '../slideMasters/slideMaster1.xml']),
+    'ppt/slideMasters/slideMaster1.xml': `${XML}<p:sldMaster ${ns}><p:cSld>`
+      + '<p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg>'
+      + `${EMPTY_TREE}</p:spTree></p:cSld>`
+      + '<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" '
+      + 'accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>'
+      + '<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>',
+    'ppt/slideMasters/_rels/slideMaster1.xml.rels': rels(['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'],
+      ['rId2', 'theme', '../theme/theme1.xml']),
+    'ppt/theme/theme1.xml': `${XML}<a:theme xmlns:a="${NS_A}" name="Motyw"><a:themeElements>`
+      + `<a:clrScheme name="Office">${colors}</a:clrScheme>`
+      + `<a:fontScheme name="Office"><a:majorFont>${font}</a:majorFont><a:minorFont>${font}</a:minorFont></a:fontScheme>`
+      + `<a:fmtScheme name="Office"><a:fillStyleLst>${solid.repeat(3)}</a:fillStyleLst>`
+      + `<a:lnStyleLst>${`<a:ln w="6350">${solid}</a:ln>`.repeat(3)}</a:lnStyleLst>`
+      + `<a:effectStyleLst>${'<a:effectStyle><a:effectLst/></a:effectStyle>'.repeat(3)}</a:effectStyleLst>`
+      + `<a:bgFillStyleLst>${solid.repeat(3)}</a:bgFillStyleLst></a:fmtScheme>`
+      + '</a:themeElements></a:theme>',
+  };
+  return Object.fromEntries(Object.entries(files).map(([k, v]) => [k, encoder.encode(v)]));
+}
+
+// Minimal OpenDocument file (LibreOffice): mimetype first and stored, then manifest, content and meta.
+function odfEntries(kind) {
+  const ns = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" '
+    + 'xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" '
+    + 'xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" '
+    + 'xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" office:version="1.2"';
+  const mime = `application/vnd.oasis.opendocument.${kind === 'ods' ? 'spreadsheet' : 'text'}`;
+  const body = kind === 'ods'
+    ? '<office:spreadsheet><table:table table:name="Arkusz1"><table:table-row><table:table-cell office:value-type="string">'
+      + '<text:p>Plik testowy</text:p></table:table-cell></table:table-row></table:table></office:spreadsheet>'
+    : '<office:text><text:p>Plik testowy</text:p></office:text>';
+  const files = {
+    mimetype: mime,
+    'META-INF/manifest.xml': '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">'
+      + `<manifest:file-entry manifest:full-path="/" manifest:version="1.2" manifest:media-type="${mime}"/>`
+      + '<manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>'
+      + '<manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>'
+      + '</manifest:manifest>',
+    'content.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<office:document-content ${ns}><office:body>${body}</office:body></office:document-content>`,
+    'meta.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<office:document-meta ${ns}><office:meta>`
+      + '<meta:generator>file-size-tool</meta:generator></office:meta></office:document-meta>',
+  };
+  return Object.fromEntries(Object.entries(files).map(([k, v]) => [k, encoder.encode(v)]));
+}
+
+// 64x64 24-bit BMP with a gradient; anything after the pixel data is ignored by viewers.
+function bmpImage() {
+  const w = 64, h = 64, row = w * 3, size = 54 + row * h;
+  const out = new Uint8Array(size);
+  const dv = new DataView(out.buffer);
+  out.set([0x42, 0x4d]);
+  dv.setUint32(2, size, true); dv.setUint32(10, 54, true); dv.setUint32(14, 40, true);
+  dv.setInt32(18, w, true); dv.setInt32(22, h, true); dv.setUint16(26, 1, true); dv.setUint16(28, 24, true);
+  dv.setUint32(34, row * h, true);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) out.set([0xed, 0x6f + x, 0x2f + y], 54 + y * row + x * 3);
+  }
+  return out;
+}
+
+const RTF = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}\\f0\\fs28 Plik testowy\\par}\n';
+const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">'
+  + '<rect width="64" height="64" fill="#2f6fed"/></svg>\n';
+
+const ZIP_GENERATORS = {
+  xlsx: () => officeEntries('xlsx'),
+  docx: () => officeEntries('docx'),
+  pptx: pptxEntries,
+  odt: () => odfEntries('odt'),
+  ods: () => odfEntries('ods'),
+  zip: () => ({ 'czytaj-mnie.txt': encoder.encode('Archiwum testowe wygenerowane w file-size-tool.\n') }),
+};
+
+const VALID_GENERATE = set(...Object.keys(ZIP_GENERATORS), 'pdf', 'heic', 'mp4', 'm4v', 'mov', 'mp3', 'gif', 'wav',
+  'png', 'jpg', 'jpeg', 'webp', 'bmp', 'rtf', 'svg');
 
 async function generate(ext, target, fill) {
-  if (ext === 'xlsx' || ext === 'docx' || ext === 'zip') {
+  if (ZIP_GENERATORS[ext]) {
     await loadFflate();
-    const entries = ext === 'zip'
-      ? { 'czytaj-mnie.txt': encoder.encode('Archiwum testowe wygenerowane w file-size-tool.\n') }
-      : officeEntries(ext);
+    const entries = ZIP_GENERATORS[ext]();
     const zip = zipToExact(entries, 6, target);
     if (!zip) throw new Error(`Najmniejszy poprawny plik .${ext} waży więcej niż ${fmt(target)}.`);
     return { parts: [zip], valid: true };
@@ -636,6 +755,9 @@ async function generate(ext, target, fill) {
   else if (ext === 'png') head = await canvasImage('image/png');
   else if (ext === 'jpg' || ext === 'jpeg') head = await canvasImage('image/jpeg');
   else if (ext === 'webp') head = await canvasImage('image/webp');
+  else if (ext === 'bmp') head = bmpImage();
+  else if (ext === 'rtf') head = encoder.encode(RTF);
+  else if (ext === 'svg') head = encoder.encode(SVG);
 
   if (!head) return { parts: fillParts(target, is('text', ext) && fill === 'zero' ? 'space' : fill), valid: is('text', ext) };
   if (head.length > target) throw new Error(`Najmniejszy poprawny plik .${ext} ma ${fmtBytes(head.length)}. Wybierz większą wagę.`);
@@ -700,10 +822,15 @@ function setNote(el, text, kind = '') {
   el.className = `note ${kind}`.trim();
 }
 
+function selectedExt() {
+  const value = els.gExtSelect.value;
+  return value === 'other' ? cleanExt(els.gExt.value) : value;
+}
+
 function updateGenerateNote() {
-  const ext = cleanExt(els.gExt.value);
+  const ext = selectedExt();
   const size = parseSize(els.gSize.value, els.gUnit.value);
-  if (!ext) return setNote(els.gNote, 'Wpisz rozszerzenie, np. xlsx, heic albo pdf.', 'warn');
+  if (!ext) return setNote(els.gNote, 'Wpisz własne rozszerzenie, np. mp4.', 'warn');
   if (!size) return setNote(els.gNote, 'Wpisz wagę większą od zera.', 'warn');
   const exact = `Plik będzie miał dokładnie ${fmtBytes(size)}.`;
   if (VALID_GENERATE.has(ext) || is('text', ext)) {
@@ -777,7 +904,7 @@ function setFile(file) {
 }
 
 async function runGenerate() {
-  const ext = cleanExt(els.gExt.value);
+  const ext = selectedExt();
   const target = parseSize(els.gSize.value, els.gUnit.value);
   if (!ext || !target) return updateGenerateNote();
   const name = `${cleanStem(els.gName.value)}.${ext}`;
@@ -861,6 +988,11 @@ els.base.addEventListener('change', () => {
   setFile(currentFile);
 });
 [els.gExt, els.gSize, els.gUnit].forEach((el) => el.addEventListener('input', updateGenerateNote));
+els.gExtSelect.addEventListener('change', () => {
+  els.gExtCustom.hidden = els.gExtSelect.value !== 'other';
+  if (!els.gExtCustom.hidden) els.gExt.focus();
+  updateGenerateNote();
+});
 [els.rSize, els.rUnit].forEach((el) => el.addEventListener('input', updateResizeNote));
 els.gRun.addEventListener('click', runGenerate);
 els.rRun.addEventListener('click', runResize);
@@ -892,4 +1024,5 @@ els.drop.addEventListener('drop', (e) => {
 
 // The browser may restore form values after a reload.
 applyMode();
+els.gExtCustom.hidden = els.gExtSelect.value !== 'other';
 updateGenerateNote();

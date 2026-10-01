@@ -44,7 +44,50 @@
         </label>
         <label class="field ext">
           <span>Rozszerzenie</span>
-          <input id="g-ext" value="xlsx" list="ext-list" autocomplete="off" spellcheck="false">
+          <select id="g-ext-select">
+            <optgroup label="Dokumenty">
+              <option value="pdf">pdf</option>
+              <option value="docx">docx (Word)</option>
+              <option value="doc">doc (stary Word)</option>
+              <option value="odt">odt</option>
+              <option value="rtf">rtf</option>
+              <option value="txt">txt</option>
+              <option value="pages">pages</option>
+            </optgroup>
+            <optgroup label="Arkusze">
+              <option value="xlsx" selected>xlsx (Excel)</option>
+              <option value="xls">xls (stary Excel)</option>
+              <option value="csv">csv</option>
+              <option value="ods">ods</option>
+              <option value="numbers">numbers</option>
+            </optgroup>
+            <optgroup label="Prezentacje">
+              <option value="pptx">pptx (PowerPoint)</option>
+              <option value="ppt">ppt (stary PowerPoint)</option>
+              <option value="key">key (Keynote)</option>
+            </optgroup>
+            <optgroup label="Zdjęcia i grafika">
+              <option value="heic">heic (iPhone)</option>
+              <option value="jpg">jpg</option>
+              <option value="jpeg">jpeg</option>
+              <option value="png">png</option>
+              <option value="webp">webp</option>
+              <option value="gif">gif</option>
+              <option value="bmp">bmp</option>
+              <option value="tiff">tiff</option>
+              <option value="svg">svg</option>
+            </optgroup>
+            <optgroup label="Archiwa">
+              <option value="zip">zip</option>
+              <option value="rar">rar</option>
+              <option value="7z">7z</option>
+            </optgroup>
+            <option value="other">Inne (wpisz)</option>
+          </select>
+        </label>
+        <label class="field ext" id="g-ext-custom-field" hidden>
+          <span>Własne rozszerzenie</span>
+          <input id="g-ext" autocomplete="off" spellcheck="false" placeholder="np. mp4">
         </label>
       </div>
       <div class="row">
@@ -115,13 +158,6 @@
       <p>Działa w przeglądarce: obrazy przez canvas, wideo i audio przez <a href="https://github.com/ffmpegwasm/ffmpeg.wasm">ffmpeg.wasm</a>, pliki Office i ZIP przez <a href="https://github.com/101arrowz/fflate">fflate</a>, HEIC przez <a href="https://github.com/alexcorvi/heic2any">heic2any</a>, PDF przez <a href="https://github.com/okathira/ghostpdl-wasm">Ghostscript</a> (AGPL). <a href="https://github.com/MrCanon19/file-size-tool">Kod na GitHubie</a>.</p>
     </footer>
   </main>
-
-  <datalist id="ext-list">
-    <option value="xlsx"><option value="docx"><option value="pdf"><option value="heic"><option value="jpg">
-    <option value="png"><option value="gif"><option value="webp"><option value="mp4"><option value="mov">
-    <option value="mp3"><option value="wav"><option value="zip"><option value="txt"><option value="csv">
-    <option value="json"><option value="bin">
-  </datalist>
 
   <script type="module" src="app.js"></script>
 </body>

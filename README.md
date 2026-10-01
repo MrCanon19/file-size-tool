@@ -11,11 +11,13 @@ Na żywo: https://mrcanon19.github.io/file-size-tool/
 
 ## Generowanie
 
+Rozszerzenie wybierasz z listy codziennych formatów (dokumenty, arkusze, prezentacje, zdjęcia, archiwa) albo wpisujesz własne przez „Inne”. Wagę można wpisać z przecinkiem albo kropką, np. `95,5`.
+
 Dla tych rozszerzeń powstaje **poprawny plik, który się otwiera** (mała zawartość testowa + wypełnienie):
 
-`xlsx`, `docx`, `zip`, `pdf`, `heic`, `jpg`, `png`, `webp`, `gif`, `mp4`, `m4v`, `mov`, `mp3`, `wav` oraz pliki tekstowe (`txt`, `csv`, `json`, …).
+`pdf`, `docx`, `odt`, `rtf`, `txt`, `xlsx`, `csv`, `ods`, `pptx`, `heic`, `jpg`, `png`, `webp`, `gif`, `bmp`, `svg`, `zip`, a przez „Inne” także `mp4`, `m4v`, `mov`, `mp3`, `wav` i pliki tekstowe (`json`, `md`, …).
 
-Każde inne rozszerzenie dostaje właściwą nazwę i wagę, ale w środku jest tylko wypełnienie (zera, losowe bajty albo tekst). Do testowania limitów uploadu to zwykle wystarcza.
+Każde inne rozszerzenie (np. `doc`, `xls`, `ppt`, `pages`, `numbers`, `key`, `tiff`, `rar`, `7z`) dostaje właściwą nazwę i wagę, ale w środku jest tylko wypełnienie (zera, losowe bajty albo tekst). Do testowania limitów uploadu to zwykle wystarcza.
 
 ## Powiększanie
 
