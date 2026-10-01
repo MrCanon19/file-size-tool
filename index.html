@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Waga plików</title>
+  <meta name="description" content="Wygeneruj plik o dowolnej wadze albo zmień wagę istniejącego pliku. Wszystko w przeglądarce, bez wysyłania plików.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fed'/%3E%3Cpath d='M9 22h14M16 8v10m-4-4 4 4 4-4' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <!-- Adds COOP/COEP headers (GitHub Pages can't), so ffmpeg can run multi-threaded. -->
+  <script src="coi-serviceworker.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Waga plików</h1>
+      <p class="lead">Wygeneruj plik o dokładnej wadze albo zmień wagę swojego pliku. Wszystko liczy się w tej przeglądarce, pliki nigdzie nie są wysyłane.</p>
+    </header>
+
+    <section class="card">
+      <div class="row">
+        <label class="field grow">
+          <span>Co chcesz zrobić?</span>
+          <select id="mode">
+            <option value="generate">Wygenerować nowy plik</option>
+            <option value="resize">Zmienić wagę mojego pliku</option>
+          </select>
+        </label>
+        <label class="field units">
+          <span>Jednostki</span>
+          <select id="base">
+            <option value="1000">1 MB = 1000 KB (macOS)</option>
+            <option value="1024">1 MB = 1024 KB (Windows)</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="card" id="generate">
+      <div class="row">
+        <label class="field grow">
+          <span>Nazwa pliku</span>
+          <input id="g-name" value="plik-testowy" autocomplete="off">
+        </label>
+        <label class="field ext">
+          <span>Rozszerzenie</span>
+          <input id="g-ext" value="xlsx" list="ext-list" autocomplete="off" spellcheck="false">
+        </label>
+      </div>
+      <div class="row">
+        <label class="field grow">
+          <span>Waga</span>
+          <input id="g-size" value="10" inputmode="decimal" autocomplete="off">
+        </label>
+        <label class="field unit">
+          <span>&nbsp;</span>
+          <select id="g-unit">
+            <option value="0">B</option>
+            <option value="1">KB</option>
+            <option value="2" selected>MB</option>
+            <option value="3">GB</option>
+          </select>
+        </label>
+      </div>
+      <label class="field">
+        <span>Zawartość (dopełnienie)</span>
+        <select id="g-fill">
+          <option value="zero">Zera (dobrze się kompresuje)</option>
+          <option value="random">Losowe bajty (nie da się skompresować)</option>
+          <option value="text">Tekst</option>
+        </select>
+      </label>
+      <p class="note" id="g-note"></p>
+      <button id="g-run" class="primary">Wygeneruj i pobierz</button>
+    </section>
+
+    <section class="card" id="resize" hidden>
+      <label class="drop" id="drop">
+        <input type="file" id="r-file">
+        <strong>Upuść plik tutaj</strong>
+        <span>albo kliknij, żeby wybrać</span>
+      </label>
+      <div id="r-info" class="info" hidden></div>
+      <div class="row">
+        <label class="field grow">
+          <span>Docelowa waga</span>
+          <input id="r-size" inputmode="decimal" autocomplete="off" placeholder="np. 90">
+        </label>
+        <label class="field unit">
+          <span>&nbsp;</span>
+          <select id="r-unit">
+            <option value="0">B</option>
+            <option value="1">KB</option>
+            <option value="2" selected>MB</option>
+            <option value="3">GB</option>
+          </select>
+        </label>
+      </div>
+      <label class="check">
+        <input type="checkbox" id="r-exact" checked>
+        <span>Dopełnij do dokładnie tej wagi (co do bajta)</span>
+      </label>
+      <p class="note" id="r-note"></p>
+      <button id="r-run" class="primary" disabled>Zmień wagę</button>
+    </section>
+
+    <section class="card" id="status" hidden>
+      <p id="s-text"></p>
+      <div class="bar"><div id="s-bar"></div></div>
+      <button id="s-cancel" class="ghost" hidden>Przerwij</button>
+      <div id="s-result" hidden></div>
+    </section>
+
+    <footer>
+      <p>Działa w przeglądarce: obrazy przez canvas, wideo i audio przez <a href="https://github.com/ffmpegwasm/ffmpeg.wasm">ffmpeg.wasm</a>, pliki Office i ZIP przez <a href="https://github.com/101arrowz/fflate">fflate</a>, HEIC przez <a href="https://github.com/alexcorvi/heic2any">heic2any</a>. <a href="https://github.com/MrCanon19/file-size-tool">Kod na GitHubie</a>.</p>
+    </footer>
+  </main>
+
+  <datalist id="ext-list">
+    <option value="xlsx"><option value="docx"><option value="pdf"><option value="heic"><option value="jpg">
+    <option value="png"><option value="gif"><option value="webp"><option value="mp4"><option value="mov">
+    <option value="mp3"><option value="wav"><option value="zip"><option value="txt"><option value="csv">
+    <option value="json"><option value="bin">
+  </datalist>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
