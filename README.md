@@ -1,27 +1,49 @@
-# Waga plików (file-size-tool)
+<h1 align="center">Waga plików</h1>
 
-Strona, która w przeglądarce:
+<p align="center">
+  Plik o dokładnie takiej wadze, jakiej potrzebujesz. Albo Twój plik, tylko lżejszy lub cięższy.<br>
+  Wszystko dzieje się w przeglądarce, pliki nigdzie nie wychodzą.
+</p>
 
-- **generuje plik o zadanej wadze** z dowolnym rozszerzeniem (co do bajta),
-- **zmienia wagę istniejącego pliku**, np. z 95 MB na 90 MB albo z 2 MB na 5 MB.
+<p align="center">
+  <a href="https://waga.michalmarini.pl/"><b>➜ waga.michalmarini.pl</b></a>
+</p>
 
-Pliki nie są nigdzie wysyłane. Wszystko liczy się lokalnie w przeglądarce.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screen-ciemny.png">
+    <img src="docs/screen-jasny.png" alt="Waga plików: generowanie pliku xlsx o wadze 10 MB" width="520">
+  </picture>
+</p>
 
-Na żywo: https://waga.michalmarini.pl/ (Netlify). Stary adres https://mrcanon19.github.io/file-size-tool/ przekierowuje tutaj.
+## Skąd ten pomysł
 
-## Generowanie
+Testuję aplikacje i musiałem sprawdzać, jak radzą sobie z wgrywaniem plików o różnej wadze. Nie chciałem robić wszystkiego w terminalu, a w sieci nie znalazłem narzędzia, które by to załatwiło. Zrobiłem więc własne.
 
-Rozszerzenie wybierasz z listy codziennych formatów (dokumenty, arkusze, prezentacje, zdjęcia, archiwa) albo wpisujesz własne przez „Inne”. Wagę można wpisać z przecinkiem albo kropką, np. `95,5`.
+## Co potrafi
 
-Dla tych rozszerzeń powstaje **poprawny plik, który się otwiera** (mała zawartość testowa + wypełnienie):
+**Wygenerować plik o zadanej wadze, co do bajta.** Wybierasz rozszerzenie, wpisujesz wagę (z przecinkiem albo kropką, np. `95,5`) i pobierasz. Dla popularnych formatów powstaje prawdziwy plik, który się otwiera:
 
-`pdf`, `docx`, `odt`, `rtf`, `txt`, `xlsx`, `csv`, `ods`, `pptx`, `heic`, `jpg`, `png`, `webp`, `gif`, `bmp`, `svg`, `zip`, a przez „Inne” także `mp4`, `m4v`, `mov`, `mp3`, `wav` i pliki tekstowe (`json`, `md`, …).
+`pdf` `docx` `odt` `rtf` `txt` `xlsx` `csv` `ods` `pptx` `heic` `jpg` `png` `webp` `gif` `bmp` `svg` `zip`
 
-Każde inne rozszerzenie (np. `doc`, `xls`, `ppt`, `pages`, `numbers`, `key`, `tiff`, `rar`, `7z`) dostaje właściwą nazwę i wagę, ale w środku jest tylko wypełnienie (zera, losowe bajty albo tekst). Do testowania limitów uploadu to zwykle wystarcza.
+a przez opcję „Inne” także `mp4`, `mov`, `mp3`, `wav` i pliki tekstowe. Każde inne rozszerzenie (`doc`, `xls`, `rar`, `7z`…) dostaje właściwą nazwę i wagę, w środku jest samo wypełnienie. Do testowania limitów uploadu to zwykle wystarcza.
 
-## Powiększanie
+**Zmienić wagę Twojego pliku.** Przeciągasz plik na stronę i mówisz, ile ma ważyć: 95 MB → 90 MB albo 2 MB → 5 MB. Przy zmniejszaniu plik jest kompresowany, a nie obcinany, więc dalej się otwiera.
 
-Wypełnienie trafia tam, gdzie format je toleruje:
+**Liczyć tak jak Twój system.** Przełącznik `1 MB = 1000 KB` (macOS, większość stron) albo `1 MB = 1024 KB` (Windows), bo „10 MB” w Finderze i w Eksploratorze to nie to samo.
+
+Do tego tryb jasny i ciemny, szybkie wagi jednym kliknięciem i porównanie przed/po.
+
+## Prywatność
+
+Pliki nie są nigdzie wysyłane. Generowanie, kompresja i przekodowanie wideo dzieją się na Twoim komputerze lub telefonie. Odwiedziny strony liczy [Umami](https://umami.is/) na moim serwerze w UE, bez ciasteczek i bez zapisywania adresu IP.
+
+## Jak to działa
+
+<details>
+<summary><b>Powiększanie:</b> gdzie trafia wypełnienie</summary>
+
+<br>
 
 | Format | Gdzie trafia wypełnienie |
 |---|---|
@@ -29,60 +51,62 @@ Wypełnienie trafia tam, gdzie format je toleruje:
 | zip, jar | dodatkowy plik `padding.bin` w archiwum |
 | mp4, mov, m4a, heic, heif, avif | blok `free` na końcu (odtwarzacze go pomijają) |
 | mp3 | znacznik ID3v2 na początku (czas trwania się nie zmienia) |
-| pdf | komentarz PDF + powtórzony `startxref` |
+| pdf | komentarz PDF i powtórzony `startxref` |
 | pozostałe | bajty dopisane na końcu |
 
-## Zmniejszanie
+</details>
+
+<details>
+<summary><b>Zmniejszanie:</b> jak plik chudnie</summary>
+
+<br>
 
 | Format | Jak |
 |---|---|
 | jpg, webp | niższa jakość, a gdy to za mało, niższa rozdzielczość |
 | png | niższa rozdzielczość |
 | heic | dekodowanie przez heic2any, wynik w **JPG** (przeglądarki nie zapisują HEIC) |
-| pdf | Ghostscript (pdfwrite) w przeglądarce: najpierw samo uporządkowanie struktury, potem coraz mocniejsza kompresja zdjęć (300 → 50 dpi). Wybierany jest najłagodniejszy poziom, który się mieści. Tekst i wektory zostają |
-| xlsx, docx, pptx, odt, ods, epub | mocniejsza kompresja ZIP, potem zmniejszenie zdjęć w środku; dane i tekst bez zmian |
+| pdf | Ghostscript w przeglądarce: najpierw samo uporządkowanie struktury, potem coraz mocniejsza kompresja zdjęć (300 → 50 dpi). Wybierany jest najłagodniejszy poziom, który się mieści. Tekst i wektory zostają |
+| xlsx, docx, pptx, odt, ods, epub | mocniejsza kompresja ZIP, potem mniejsze zdjęcia w środku. Dane i tekst bez zmian |
 | zip | mocniejsza kompresja, zawartość bez zmian |
-| wideo | przekodowanie do MP4 (H.264 + AAC) z bitrate dobranym do wagi, ffmpeg.wasm |
-| audio | przekodowanie do MP3 (m4a/aac zostają w M4A), ffmpeg.wasm |
+| wideo | przekodowanie do MP4 (H.264 + AAC) z bitrate dobranym do wagi |
+| audio | przekodowanie do MP3 (m4a i aac zostają w M4A) |
 
-Domyślnie wynik jest dopełniany do dokładnej wagi docelowej (można to wyłączyć).
+Domyślnie wynik jest dopełniany do dokładnej wagi docelowej. Można to wyłączyć.
 
-Ograniczenia:
+</details>
 
-- Wideo kodowane jest w przeglądarce (4 wątki, gdy przeglądarka na to pozwala), czyli wolniej niż w programie na komputerze. Test: 20 s wideo 720p, 22,7 → 10 MB, ok. 100 s na MacBooku. Plik rzędu 100 MB może się liczyć kilkanaście minut lub dłużej. Limit to ok. 1,5 GB.
+## Ograniczenia
+
+- **Wideo liczy się wolniej niż w programie na komputerze**, bo koduje je przeglądarka. Przykład: 20 s nagrania 720p z 22,7 MB do 10 MB trwa ok. 100 s na MacBooku. Plik rzędu 100 MB to kilkanaście minut lub więcej. Limit to ok. 1,5 GB.
+- **PDF:** pierwsze zmniejszenie pobiera Ghostscript (ok. 15 MB). Przykład: 8 stron ze zdjęciami z 15,7 MB do 3 MB w ok. 30 s.
+- **HEIC po zmniejszeniu staje się JPG.** Przeglądarki nie potrafią zapisać HEIC.
 - Pliki ZIP i Office powyżej 4 GB nie są obsługiwane (brak ZIP64).
-- PDF: pierwsze zmniejszenie pobiera Ghostscript (ok. 15 MB). Test: 8 stron ze zdjęciami, 15,7 → 3 MB w ok. 30 s. PDF zabezpieczony hasłem nie zadziała.
-- Plików zabezpieczonych hasłem ani formatów nieznanych nie da się zmniejszyć bez uszkodzenia.
+- Plików zabezpieczonych hasłem ani nieznanych formatów nie da się zmniejszyć bez uszkodzenia.
 - Stare formaty Office (`xls`, `doc`, `ppt`) po powiększeniu mogą zgłosić błąd.
 
-## Jednostki
+## Dla programistów
 
-Przełącznik u góry: `1 MB = 1000 KB` (macOS, większość stron www) albo `1 MB = 1024 KB` (Windows).
-
-## Uruchomienie lokalnie
+Statyczna strona: HTML, CSS i JavaScript, bez budowania i bez zależności do instalowania.
 
 ```bash
 python3 -m http.server 8765
 # http://127.0.0.1:8765/
 ```
 
-Bez budowania i bez zależności do instalowania. Biblioteki:
+Lokalny serwer nie wysyła nagłówków COOP/COEP, więc wideo liczy się tam na jednym wątku. Na produkcji nagłówki ustawia Netlify z pliku `_headers` i działa wielowątkowy `@ffmpeg/core-mt`.
 
-- [`@ffmpeg/ffmpeg` 0.12.15 i `@ffmpeg/util` 0.12.2](https://github.com/ffmpegwasm/ffmpeg.wasm) (MIT) są w `vendor/`, żeby worker ładował się z tej samej domeny; rdzeń `@ffmpeg/core` 0.12.10 pobierany z jsDelivr dopiero przy zmniejszaniu wideo i audio,
-- [`fflate`](https://github.com/101arrowz/fflate) 0.8.3 (MIT) i [`heic2any`](https://github.com/alexcorvi/heic2any) 0.0.4 (MIT) z jsDelivr, ładowane na żądanie.
+Biblioteki, ładowane dopiero wtedy, gdy są potrzebne:
 
-[`@okathira/ghostpdl-wasm`](https://github.com/okathira/ghostpdl-wasm) 1.1.0, czyli Ghostscript w WebAssembly, pobierany z jsDelivr dopiero przy zmniejszaniu PDF. Licencja **AGPL-3.0**: kod źródłowy tej strony jest publiczny, a źródła Ghostscript są w repo okathira/ghostpdl-wasm.
-
-Nagłówki COOP/COEP ustawia Netlify z pliku `_headers`. Dzięki nim działa wielowątkowy `@ffmpeg/core-mt`. Lokalny `python3 -m http.server` ich nie wysyła, więc tam wideo liczy się na jednym wątku.
-
-## Wdrożenie
-
-Strona jest na Netlify (projekt `waga-plikow`), wdrażana ręcznie, bez łączenia repo z Netlify:
-
-```bash
-netlify deploy --prod --dir=. --site=<SITE_ID>
-```
-
-GitHub Pages serwuje branch `gh-pages`, w którym jest tylko strona przekierowująca na nowy adres.
+- [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm): `@ffmpeg/ffmpeg` 0.12.15 i `@ffmpeg/util` 0.12.2 w `vendor/` (worker musi być z tej samej domeny), rdzeń `@ffmpeg/core` 0.12.10 z jsDelivr. MIT
+- [fflate](https://github.com/101arrowz/fflate) 0.8.3 do ZIP i plików Office. MIT
+- [heic2any](https://github.com/alexcorvi/heic2any) 0.0.4 do zdjęć z iPhone'a. MIT
+- [ghostpdl-wasm](https://github.com/okathira/ghostpdl-wasm) 1.1.0, czyli Ghostscript w WebAssembly, do PDF. **AGPL-3.0**: dlatego kod tej strony jest publiczny, a źródła Ghostscript są w repo okathira/ghostpdl-wasm
 
 `templates.js` zawiera małe poprawne pliki (heic, mp4, mov, mp3, gif) wygenerowane przez ffmpeg i `sips`.
+
+Strona stoi na Netlify i jest wdrażana ręcznie (`netlify deploy --prod --dir=.`), bez łączenia repo z Netlify. Stary adres na GitHub Pages przekierowuje na nowy.
+
+## Licencja
+
+[MIT](LICENSE) © Michał Marini. Uwaga na Ghostscript (AGPL-3.0), opis wyżej.
