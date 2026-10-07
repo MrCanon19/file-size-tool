@@ -1101,7 +1101,12 @@ function setMode(value) {
 }
 
 els.mode.addEventListener('change', applyMode);
+try {
+  const saved = localStorage.getItem('base');
+  if (saved) els.base.querySelector(`input[value="${saved === '1000' ? 1000 : 1024}"]`).checked = true;
+} catch {}
 els.base.addEventListener('change', () => {
+  try { localStorage.setItem('base', String(base())); } catch {}
   updateGenerateNote();
   setFile(currentFile);
   markPreset(els.gPresets);
