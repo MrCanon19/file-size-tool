@@ -228,6 +228,11 @@ input:focus-visible, select:focus-visible, button:focus-visible, .drop:focus-wit
   white-space: nowrap;
 }
 .fill small { font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+.fill.locked label { cursor: not-allowed; }
+.fill.locked .fill-card { opacity: 0.45; }
+.fill.locked label:hover .fill-card { border-color: var(--line); }
+.fill.locked input:checked + .fill-card { border-color: var(--line); background: var(--field); box-shadow: none; }
+.fill-lock { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
 
 .check { display: flex; gap: 10px; align-items: center; cursor: pointer; }
 .check input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; }

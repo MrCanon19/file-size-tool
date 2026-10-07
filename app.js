@@ -31,7 +31,7 @@ const els = {
   mode: $('mode'),
   generate: $('generate'), gName: $('g-name'), gExt: $('g-ext'), gSize: $('g-size'), gUnit: $('g-unit'),
   gExtSelect: $('g-ext-select'), gExtCustom: $('g-ext-custom-field'),
-  gFill: $('g-fill'), gFillField: $('g-fill-field'), gNote: $('g-note'), gRun: $('g-run'),
+  gFill: $('g-fill'), gFillLock: $('g-fill-lock'), gNote: $('g-note'), gRun: $('g-run'),
   gPresets: $('g-presets'),
   resize: $('resize'), drop: $('drop'), dropTitle: $('drop-title'), dropSub: $('drop-sub'), rFile: $('r-file'),
   rSize: $('r-size'), rUnit: $('r-unit'), rPresets: $('r-presets'), rExact: $('r-exact'), rNote: $('r-note'), rRun: $('r-run'),
@@ -235,7 +235,7 @@ function padPartFor(entries) {
 
 // Builds a ZIP. Office/ODF/EPUB files get whitespace after the root element of an XML part
 // (valid XML, nothing else changes); plain ZIPs get an extra stored padding.bin entry.
-function buildZip(entries, level, padBytes) {
+function buildZip(entries, level, padBytes, kind = 'zero') {
   const padPart = padPartFor(entries);
   const out = {};
   for (const [name, data] of Object.entries(entries)) {
@@ -248,13 +248,13 @@ function buildZip(entries, level, padBytes) {
       out[name] = [data, { level: name === 'mimetype' || name.endsWith('/') ? 0 : level }];
     }
   }
-  if (!padPart && padBytes > 0) out['padding.bin'] = [new Uint8Array(padBytes), { level: 0 }];
+  if (!padPart && padBytes > 0) out['padding.bin'] = [fillBytes(padBytes, kind), { level: 0 }];
   else if (padPart && padBytes === 0) out[padPart][1] = { level: 0 };
   return fflate.zipSync(out);
 }
 
 // Returns a ZIP of exactly `target` bytes, or null if the content alone is already bigger.
-function zipToExact(entries, level, target) {
+function zipToExact(entries, level, target, kind = 'zero') {
   if (target > ZIP_MAX) throw new Error('Pliki ZIP i Office powyżej 4 GB nie są obsługiwane.');
   const padPart = padPartFor(entries);
   // padding.bin costs its headers too, so measure with a 1-byte entry and subtract.
@@ -262,7 +262,7 @@ function zipToExact(entries, level, target) {
   let n = target - probe;
   if (n < (padPart ? 0 : 1)) return null;
   for (let i = 0; i < 3; i++) {
-    const zip = buildZip(entries, level, n);
+    const zip = buildZip(entries, level, n, kind);
     if (zip.length === target) return zip;
     n += target - zip.length;
   }
@@ -841,7 +841,7 @@ async function generate(ext, target, fill) {
   if (ZIP_GENERATORS[ext]) {
     await loadFflate();
     const entries = ZIP_GENERATORS[ext]();
-    const zip = zipToExact(entries, 6, target);
+    const zip = zipToExact(entries, 6, target, fill);
     if (!zip) throw new Error(`Najmniejszy poprawny plik .${ext} ma ${fmtBytes(buildZip(entries, 6, 0).length)}. Wybierz większą wagę.`);
     return { parts: [zip], valid: true };
   }
@@ -960,8 +960,12 @@ function updateGenerateNote() {
   if (!ext) return setNote(els.gNote, 'Wpisz własne rozszerzenie, np. mp4.', 'warn');
   if (!size) return setNote(els.gNote, 'Wpisz wagę większą od zera.', 'warn');
   const exact = `Plik będzie miał dokładnie ${fmtBytes(size)}.`;
-  // Office, ZIP, JSON and RTF accept only spaces as padding, so there is nothing to choose.
-  els.gFillField.hidden = Boolean(ZIP_GENERATORS[ext]) || WHITESPACE_ONLY.has(ext);
+  // Office, ODF, JSON and RTF accept only spaces as padding: the choice stays visible but inactive.
+  const locked = (Boolean(ZIP_GENERATORS[ext]) && ext !== 'zip') || WHITESPACE_ONLY.has(ext);
+  els.gFill.classList.toggle('locked', locked);
+  for (const input of els.gFill.querySelectorAll('input')) input.disabled = locked;
+  els.gFillLock.hidden = !locked;
+  els.gFillLock.textContent = locked ? `Plik .${ext} dopełniam spacjami w środku, bo każdy inny znak by go zepsuł. Tu ten wybór nie działa.` : '';
   if (VALID_GENERATE.has(ext) || is('text', ext)) {
     setNote(els.gNote, `${exact} Dla .${ext} powstanie poprawny plik, który się otworzy (z małą zawartością testową), dopełniony do tej wagi.`);
   } else {

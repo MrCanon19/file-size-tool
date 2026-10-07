@@ -50,12 +50,12 @@ Pliki nie są nigdzie wysyłane. Generowanie, kompresja i przekodowanie wideo dz
 | Format | Gdzie trafia wypełnienie |
 |---|---|
 | xlsx, docx, pptx, odt, ods, epub | białe znaki po głównym elemencie XML wewnątrz archiwum (np. `docProps/app.xml`) |
-| zip, jar | dodatkowy plik `padding.bin` w archiwum |
+| zip, jar | dodatkowy plik `padding.bin` w archiwum (losowe bajty, zera albo tekst) |
 | mp4, mov, m4a, heic, heif, avif | blok `free` na końcu (odtwarzacze go pomijają) |
 | mp3 | znacznik ID3v2 na początku, przy losowych bajtach w ramce `PRIV` (czas trwania się nie zmienia) |
 | pdf | komentarze PDF i powtórzony `startxref` |
 | svg, xml, html | komentarz `<!-- -->` po głównym elemencie |
-| json, rtf | spacje na końcu (inne znaki zepsułyby plik) |
+| json, rtf | spacje na końcu (inne znaki zepsułyby plik, wybór wypełnienia jest wtedy nieaktywny) |
 | txt, csv, md | losowe litery i cyfry albo tekst, żeby plik dalej był tekstem |
 | pozostałe | bajty dopisane na końcu |
 
