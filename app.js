@@ -28,7 +28,7 @@ const isZipLike = (ext) => is('officeZip', ext) || is('zip', ext);
 
 const $ = (id) => document.getElementById(id);
 const els = {
-  mode: $('mode'), base: $('base'),
+  mode: $('mode'),
   generate: $('generate'), gName: $('g-name'), gExt: $('g-ext'), gSize: $('g-size'), gUnit: $('g-unit'),
   gExtSelect: $('g-ext-select'), gExtCustom: $('g-ext-custom-field'),
   gFill: $('g-fill'), gNote: $('g-note'), gRun: $('g-run'),
@@ -46,7 +46,8 @@ let resultUrl = null;
 
 // ---------- helpers ----------
 
-const base = () => Number(checked(els.base));
+// 1 MB = 1024 KB, like Chrome, Windows and most upload limits.
+const base = () => 1024;
 
 function parseSize(value, unit) {
   const n = parseFloat(String(value).replace(',', '.').replace(/\s/g, ''));
@@ -75,7 +76,7 @@ function cleanExt(value) {
 }
 
 function cleanStem(value) {
-  return value.trim().replace(/[\\/:*?"<>|]/g, '-') || 'plik';
+  return value.trim().replace(/[\\/:*?"<>|]/g, '-') || 'plik-testowy';
 }
 
 const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -1112,18 +1113,6 @@ function setMode(value) {
 }
 
 els.mode.addEventListener('change', applyMode);
-try {
-  const saved = localStorage.getItem('base');
-  if (saved) els.base.querySelector(`input[value="${saved === '1000' ? 1000 : 1024}"]`).checked = true;
-} catch {}
-// A non-default unit stays visible, so nobody is surprised by the numbers.
-if (base() !== 1024) $('more').open = true;
-els.base.addEventListener('change', () => {
-  try { localStorage.setItem('base', String(base())); } catch {}
-  updateGenerateNote();
-  setFile(currentFile);
-  markPreset(els.gPresets);
-});
 [els.gExt, els.gSize, els.gUnit].forEach((el) => el.addEventListener('input', () => {
   updateGenerateNote();
   markPreset(els.gPresets);
