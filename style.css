@@ -278,6 +278,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 #s-result { display: grid; gap: 10px; }
 #s-result .ok { padding: 12px; border-radius: 9px; background: var(--ok-bg); color: var(--ok-text); overflow-wrap: anywhere; }
 #s-result .ok b { font-variant-numeric: tabular-nums; }
+#s-result .ok .sides { display: block; margin-top: 4px; opacity: .85; font-variant-numeric: tabular-nums; }
 #s-result .err { padding: 12px; border-radius: 9px; background: var(--err-bg); color: var(--err-text); }
 .primary-link,
 #s-result a.primary {

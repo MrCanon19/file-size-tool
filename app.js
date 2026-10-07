@@ -54,11 +54,11 @@ function parseSize(value, unit) {
   return Math.round(n * base() ** Number(unit));
 }
 
-function fmt(bytes) {
+function fmt(bytes, b = base()) {
   const units = ['B', 'KB', 'MB', 'GB'];
   let i = 0;
   let v = bytes;
-  while (v >= base() && i < units.length - 1) { v /= base(); i++; }
+  while (v >= b && i < units.length - 1) { v /= b; i++; }
   return `${v.toLocaleString('pl-PL', { maximumFractionDigits: i ? 2 : 0 })} ${units[i]}`;
 }
 
@@ -815,6 +815,11 @@ function showResult(blob, name, extra = '', fromSize = null) {
     change = ` Było ${fmt(fromSize)}, zmiana ${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct)}%.`;
   }
   ok.append(`Gotowe: ${name}, `, size, ` (${fmtBytes(blob.size)}).${change}${extra ? ` ${extra}` : ''}`);
+  // The same bytes read differently depending on whether 1 MB is 1000 or 1024 KB.
+  const sides = document.createElement('small');
+  sides.className = 'sides';
+  sides.textContent = `Finder (macOS): ${fmt(blob.size, 1000)} · Windows, Chrome: ${fmt(blob.size, 1024)}`;
+  ok.append(sides);
   const a = document.createElement('a');
   a.className = 'primary';
   a.href = resultUrl;
