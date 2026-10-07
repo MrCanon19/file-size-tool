@@ -303,6 +303,51 @@ async function encodeBitmap(bitmap, scale, mime, quality) {
   return new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
 }
 
+// EXIF, XMP and IPTC segments of a JPEG; canvas re-encoding drops them, so they are copied back.
+// ICC is left to the encoder: the canvas already converted the pixels to its own profile.
+async function jpegMeta(blob) {
+  const b = new Uint8Array(await blob.slice(0, 1 << 20).arrayBuffer());
+  const segs = [];
+  if (b[0] !== 0xff || b[1] !== 0xd8) return segs;
+  let i = 2;
+  while (i + 4 <= b.length && b[i] === 0xff) {
+    const marker = b[i + 1];
+    if (marker === 0xda || marker === 0xd9) break;
+    const end = i + 2 + ((b[i + 2] << 8) | b[i + 3]);
+    if (end > b.length) break;
+    if (marker === 0xe1 || marker === 0xed) segs.push(resetOrientation(b.slice(i, end)));
+    i = end;
+  }
+  return segs;
+}
+
+// The canvas already holds the rotated pixels, so a copied Orientation tag would rotate twice.
+function resetOrientation(seg) {
+  const isExif = String.fromCharCode(...seg.subarray(4, 8)) === 'Exif';
+  if (!isExif || seg.length < 18) return seg;
+  const view = new DataView(seg.buffer);
+  const tiff = 10;
+  const le = seg[tiff] === 0x49;
+  const ifd = tiff + view.getUint32(tiff + 4, le);
+  if (ifd + 2 > seg.length) return seg;
+  const count = view.getUint16(ifd, le);
+  for (let k = 0; k < count; k++) {
+    const entry = ifd + 2 + k * 12;
+    if (entry + 12 > seg.length) break;
+    if (view.getUint16(entry, le) === 0x0112) view.setUint16(entry + 8, 1, le);
+  }
+  return seg;
+}
+
+// Puts the original metadata segments right after SOI, in place of the encoder's JFIF header.
+async function withJpegMeta(blob, segs) {
+  if (!segs.length) return blob;
+  const head = new Uint8Array(await blob.slice(0, 64).arrayBuffer());
+  let start = 2;
+  if (head[2] === 0xff && head[3] === 0xe0) start = 4 + ((head[4] << 8) | head[5]);
+  return new Blob([head.subarray(0, 2), ...segs, blob.slice(start)], { type: 'image/jpeg' });
+}
+
 async function shrinkImage(blob, mime, target, onStep) {
   const bitmap = await createImageBitmap(blob);
   let best = null;
@@ -1017,7 +1062,10 @@ async function runResize() {
         outExt = 'jpg';
         extra = 'HEIC zapisany jako JPG.';
       }
-      outBlob = await shrinkImage(source, mime, plan.target, onStep);
+      const meta = plan.kind === 'image' && mime === 'image/jpeg' ? await jpegMeta(file) : [];
+      let metaSize = meta.reduce((sum, s) => sum + s.length, 0);
+      if (metaSize >= plan.target / 2) { meta.length = 0; metaSize = 0; }
+      outBlob = await withJpegMeta(await shrinkImage(source, mime, plan.target - metaSize, onStep), meta);
     } else if (plan.kind === 'media') {
       els.sCancel.hidden = false;
       const { data, ext: e } = await shrinkMedia(file, ext, plan.target, onStep);
@@ -1032,7 +1080,7 @@ async function runResize() {
     }
 
     if (exact && outBlob.size < plan.target && !isZipLike(outExt)) outBlob = await padTo(outBlob, plan.target, outExt);
-    showResult(outBlob, `${stem}-${fmt(plan.target).replace(/\s/g, '').replace(',', '_')}.${outExt}`, extra, file.size);
+    showResult(outBlob, outExt === ext ? file.name : `${stem}.${outExt}`, extra, file.size);
   } catch (err) {
     showError(err);
   } finally {
