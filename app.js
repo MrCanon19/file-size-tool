@@ -1105,6 +1105,8 @@ try {
   const saved = localStorage.getItem('base');
   if (saved) els.base.querySelector(`input[value="${saved === '1000' ? 1000 : 1024}"]`).checked = true;
 } catch {}
+// A non-default unit stays visible, so nobody is surprised by the numbers.
+if (base() !== 1024) $('more').open = true;
 els.base.addEventListener('change', () => {
   try { localStorage.setItem('base', String(base())); } catch {}
   updateGenerateNote();

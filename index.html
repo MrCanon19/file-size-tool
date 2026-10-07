@@ -47,11 +47,15 @@
         <label><input type="radio" name="mode" value="generate" checked><span>Wygeneruj plik</span></label>
         <label><input type="radio" name="mode" value="resize"><span>Zmień wagę pliku</span></label>
       </div>
-      <div class="seg" id="base" role="radiogroup" aria-label="Jednostki: ile KB ma 1 MB">
-        <span class="seg-label" aria-hidden="true">1 MB =</span>
-        <label><input type="radio" name="base" value="1000"><span>1000 KB <small>Finder</small></span></label>
-        <label><input type="radio" name="base" value="1024" checked><span>1024 KB <small>Windows, Chrome</small></span></label>
-      </div>
+      <details class="more" id="more">
+        <summary>Więcej opcji</summary>
+        <div class="seg" id="base" role="radiogroup" aria-label="Jednostki: ile KB ma 1 MB">
+          <span class="seg-label" aria-hidden="true">1 MB =</span>
+          <label><input type="radio" name="base" value="1000"><span>1000 KB <small>Finder</small></span></label>
+          <label><input type="radio" name="base" value="1024" checked><span>1024 KB <small>Windows, Chrome</small></span></label>
+        </div>
+        <p class="more-hint">Ustaw tak, jak liczy program, w którym sprawdzasz wagę albo limit uploadu.</p>
+      </details>
     </div>
 
     <section class="card" id="generate">
