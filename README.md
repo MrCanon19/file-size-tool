@@ -28,7 +28,7 @@ Testuję aplikacje i musiałem sprawdzać, jak radzą sobie z wgrywaniem plików
 
 a przez opcję „Inne” także `mp4`, `mov`, `mp3`, `wav` i pliki tekstowe. Każde inne rozszerzenie (`doc`, `xls`, `rar`, `7z`…) dostaje właściwą nazwę i wagę, w środku jest samo wypełnienie. Do testowania limitów uploadu to zwykle wystarcza.
 
-**Zmienić wagę Twojego pliku.** Przeciągasz plik na stronę i mówisz, ile ma ważyć: 95 MB → 90 MB albo 2 MB → 5 MB. Przy zmniejszaniu plik jest kompresowany, a nie obcinany, więc dalej się otwiera.
+**Zmienić wagę Twojego pliku.** Przeciągasz plik na stronę i mówisz, ile ma ważyć: 95 MB → 90 MB albo 2 MB → 5 MB. Przy zmniejszaniu plik jest kompresowany, a nie obcinany, więc dalej się otwiera. Nazwa pliku zostaje taka sama, a zdjęcie JPG zachowuje dane z aparatu (model, data, lokalizacja).
 
 **Liczyć tak jak Twój program.** Przełącznik `1 MB = 1024 KB` (Windows, Chrome, domyślnie) albo `1 MB = 1000 KB` (Finder), bo „10 MB” w Finderze i w Eksploratorze to nie to samo. Strona pamięta ostatni wybór, a przy wyniku pokazuje wagę w obu systemach.
 

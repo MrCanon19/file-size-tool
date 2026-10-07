@@ -241,6 +241,7 @@ async function shrinkZip(u8, ext, target, exact, onStep) {
   const entries = unzipFile(u8);
   onStep('Pakuję mocniej…');
   let best = buildZip(entries, 9, 0);
+  let smallest = best.length;
   if (best.length > target && is('officeZip', ext)) {
     const images = Object.keys(entries).filter((n) => OFFICE_IMAGE.test(n));
     if (images.length) {
@@ -264,6 +265,7 @@ async function shrinkZip(u8, ext, target, exact, onStep) {
         onStep(`Zmniejszam zdjęcia w środku pliku (próba ${i + 1} z 7)…`);
         const candidate = await variant(t);
         const size = buildZip(candidate, 9, 0).length;
+        smallest = Math.min(smallest, size);
         if (size <= target) { bestEntries = candidate; hi = t; } else if (i === 0) break; else lo = t;
       }
       if (bestEntries) {
@@ -273,7 +275,7 @@ async function shrinkZip(u8, ext, target, exact, onStep) {
     }
   }
   if (best.length > target) {
-    throw new Error(`Po mocniejszym spakowaniu plik ma ${fmt(best.length)}. Mniej się nie da bez usuwania zawartości.`);
+    throw new Error(`Najmniej, ile wyszło: ${fmt(smallest)}. Mniej się nie da bez usuwania zawartości.`);
   }
   if (!exact) return best;
   return zipToExact(entries, 9, target);
@@ -348,17 +350,23 @@ async function withJpegMeta(blob, segs) {
   return new Blob([head.subarray(0, 2), ...segs, blob.slice(start)], { type: 'image/jpeg' });
 }
 
-async function shrinkImage(blob, mime, target, onStep) {
+// `overhead` = bytes added afterwards (copied metadata), only used to report the smallest size.
+async function shrinkImage(blob, mime, target, onStep, overhead = 0) {
   const bitmap = await createImageBitmap(blob);
   let best = null;
-  const keep = (b) => { if (b && b.size <= target && (!best || b.size > best.size)) best = b; };
+  let smallest = Infinity;
+  const keep = (b) => {
+    if (b) smallest = Math.min(smallest, b.size);
+    if (b && b.size <= target && (!best || b.size > best.size)) best = b;
+  };
   if (mime !== 'image/png') {
     let lo = 0.05, hi = 0.95;
     for (let i = 0; i < 8; i++) {
       onStep(`Dobieram jakość (próba ${i + 1})…`);
       const q = (lo + hi) / 2;
       const b = await encodeBitmap(bitmap, 1, mime, q);
-      if (b.size <= target) { keep(b); lo = q; } else hi = q;
+      keep(b);
+      if (b.size <= target) lo = q; else hi = q;
     }
   }
   if (!best) {
@@ -367,10 +375,11 @@ async function shrinkImage(blob, mime, target, onStep) {
       onStep(`Dobieram rozdzielczość (próba ${i + 1})…`);
       const s = (lo + hi) / 2;
       const b = await encodeBitmap(bitmap, s, mime, 0.8);
-      if (b.size <= target) { keep(b); lo = s; } else hi = s;
+      keep(b);
+      if (b.size <= target) lo = s; else hi = s;
     }
   }
-  if (!best) throw new Error('Nie udało się zmieścić obrazu w tej wadze.');
+  if (!best) throw new Error(`Najmniejszy obraz, jaki wyszedł, ma ${fmt(smallest + overhead)} (przy bardzo małej rozdzielczości). Wybierz większą wagę.`);
   return best;
 }
 
@@ -789,7 +798,7 @@ async function generate(ext, target, fill) {
     await loadFflate();
     const entries = ZIP_GENERATORS[ext]();
     const zip = zipToExact(entries, 6, target);
-    if (!zip) throw new Error(`Najmniejszy poprawny plik .${ext} waży więcej niż ${fmt(target)}.`);
+    if (!zip) throw new Error(`Najmniejszy poprawny plik .${ext} ma ${fmtBytes(buildZip(entries, 6, 0).length)}. Wybierz większą wagę.`);
     return { parts: [zip], valid: true };
   }
   if (ext === 'wav') {
@@ -945,7 +954,9 @@ function updateResizeNote() {
     none: ['Wpisz docelową wagę.'],
     same: ['Plik ma już dokładnie tę wagę.', 'warn'],
     grow: growNotes(),
-    image: ['Przekompresuję obraz: najpierw obniżę jakość, a jeśli to nie wystarczy, rozdzielczość. Metadane (EXIF, lokalizacja) zostaną usunięte.'],
+    image: [`Przekompresuję obraz: najpierw obniżę jakość, a jeśli to nie wystarczy, rozdzielczość. ${ext === 'jpg' || ext === 'jpeg'
+      ? 'Nazwa i dane zdjęcia (aparat, data, lokalizacja) zostają.'
+      : 'Nazwa zostaje, dane zdjęcia (EXIF) zostaną usunięte.'}`],
     heic: ['Przeglądarka nie potrafi zapisać HEIC, więc zmniejszony plik będzie w formacie JPG. Metadane zostaną usunięte.', 'warn'],
     media: is('video', ext)
       ? ['Przekoduję wideo do MP4 (H.264 + AAC) z bitrate dobranym do wagi. Duże pliki liczą się długo, zostaw kartę otwartą.']
@@ -1065,7 +1076,7 @@ async function runResize() {
       const meta = plan.kind === 'image' && mime === 'image/jpeg' ? await jpegMeta(file) : [];
       let metaSize = meta.reduce((sum, s) => sum + s.length, 0);
       if (metaSize >= plan.target / 2) { meta.length = 0; metaSize = 0; }
-      outBlob = await withJpegMeta(await shrinkImage(source, mime, plan.target - metaSize, onStep), meta);
+      outBlob = await withJpegMeta(await shrinkImage(source, mime, plan.target - metaSize, onStep, metaSize), meta);
     } else if (plan.kind === 'media') {
       els.sCancel.hidden = false;
       const { data, ext: e } = await shrinkMedia(file, ext, plan.target, onStep);
