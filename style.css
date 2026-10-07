@@ -188,6 +188,47 @@ input:focus-visible, select:focus-visible, button:focus-visible, .drop:focus-wit
 .chips button:hover { border-color: var(--accent); color: var(--text); }
 .chips button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
 
+/* Fill choice: three cards with a short legend */
+.fill { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fill label { position: relative; cursor: pointer; display: flex; }
+.fill input { position: absolute; top: 0; left: 0; margin: 0; opacity: 0; pointer-events: none; }
+.fill-card {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.fill label:hover .fill-card { border-color: var(--accent); }
+.fill input:checked + .fill-card { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.fill input:focus-visible + .fill-card { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fill-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
+.fill-sample {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font: 600 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+}
+.fill b { font-size: 14px; color: var(--text); }
+.fill em {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--ok-bg);
+  color: var(--ok-text);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.fill small { font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+
 .check { display: flex; gap: 10px; align-items: center; cursor: pointer; }
 .check input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
 
@@ -295,6 +336,7 @@ footer a { color: inherit; }
   main { padding-top: 24px; }
   h1 { font-size: 24px; }
   .tabs { width: 100%; }
+  .fill { grid-template-columns: 1fr; }
   .tabs span { padding: 9px 8px; }
   .field.ext { flex: 1 1 100%; }
   button.primary { width: 100%; }

@@ -12,7 +12,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screen-ciemny.png">
-    <img src="docs/screen-jasny.png" alt="Waga plików: generowanie pliku xlsx o wadze 10 MB" width="520">
+    <img src="docs/screen-jasny.png" alt="Waga plików: generowanie pliku PDF o wadze 10 MB z wyborem wypełnienia" width="520">
   </picture>
 </p>
 
@@ -27,6 +27,8 @@ Testuję aplikacje i musiałem sprawdzać, jak radzą sobie z wgrywaniem plików
 `pdf` `docx` `odt` `rtf` `txt` `xlsx` `csv` `ods` `pptx` `heic` `jpg` `png` `webp` `gif` `bmp` `svg` `zip`
 
 a przez opcję „Inne” także `mp4`, `mov`, `mp3`, `wav` i pliki tekstowe. Każde inne rozszerzenie (`doc`, `xls`, `rar`, `7z`…) dostaje właściwą nazwę i wagę, w środku jest samo wypełnienie. Do testowania limitów uploadu to zwykle wystarcza.
+
+Domyślnie plik jest dopełniany losowymi bajtami, których nie da się skompresować, więc waży tyle samo także wtedy, gdy testowany system pakuje go przy wysyłce. Do wyboru są też zera (szybko się pakują) i czytelny tekst.
 
 **Zmienić wagę Twojego pliku.** Przeciągasz plik na stronę i mówisz, ile ma ważyć: 95 MB → 90 MB albo 2 MB → 5 MB. Przy zmniejszaniu plik jest kompresowany, a nie obcinany, więc dalej się otwiera. Nazwa pliku zostaje taka sama, a zdjęcie JPG zachowuje dane z aparatu (model, data, lokalizacja).
 
@@ -50,8 +52,11 @@ Pliki nie są nigdzie wysyłane. Generowanie, kompresja i przekodowanie wideo dz
 | xlsx, docx, pptx, odt, ods, epub | białe znaki po głównym elemencie XML wewnątrz archiwum (np. `docProps/app.xml`) |
 | zip, jar | dodatkowy plik `padding.bin` w archiwum |
 | mp4, mov, m4a, heic, heif, avif | blok `free` na końcu (odtwarzacze go pomijają) |
-| mp3 | znacznik ID3v2 na początku (czas trwania się nie zmienia) |
-| pdf | komentarz PDF i powtórzony `startxref` |
+| mp3 | znacznik ID3v2 na początku, przy losowych bajtach w ramce `PRIV` (czas trwania się nie zmienia) |
+| pdf | komentarze PDF i powtórzony `startxref` |
+| svg, xml, html | komentarz `<!-- -->` po głównym elemencie |
+| json, rtf | spacje na końcu (inne znaki zepsułyby plik) |
+| txt, csv, md | losowe litery i cyfry albo tekst, żeby plik dalej był tekstem |
 | pozostałe | bajty dopisane na końcu |
 
 </details>

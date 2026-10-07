@@ -31,7 +31,7 @@ const els = {
   mode: $('mode'),
   generate: $('generate'), gName: $('g-name'), gExt: $('g-ext'), gSize: $('g-size'), gUnit: $('g-unit'),
   gExtSelect: $('g-ext-select'), gExtCustom: $('g-ext-custom-field'),
-  gFill: $('g-fill'), gNote: $('g-note'), gRun: $('g-run'),
+  gFill: $('g-fill'), gFillField: $('g-fill-field'), gNote: $('g-note'), gRun: $('g-run'),
   gPresets: $('g-presets'),
   resize: $('resize'), drop: $('drop'), dropTitle: $('drop-title'), dropSub: $('drop-sub'), rFile: $('r-file'),
   rSize: $('r-size'), rUnit: $('r-unit'), rPresets: $('r-presets'), rExact: $('r-exact'), rNote: $('r-note'), rRun: $('r-run'),
@@ -91,6 +91,18 @@ function fillChunk(kind) {
   } else if (kind === 'text') {
     const line = encoder.encode('Plik testowy wygenerowany do sprawdzenia limitu wagi. Lorem ipsum dolor sit amet.\n');
     for (let i = 0; i < CHUNK; i += line.length) c.set(line.subarray(0, Math.min(line.length, CHUNK - i)), i);
+  } else if (kind === 'letters') {
+    // Random letters and digits: readable as text and still barely compressible.
+    const abc = encoder.encode('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
+    for (let i = 0; i < CHUNK; i += 65536) crypto.getRandomValues(c.subarray(i, i + 65536));
+    for (let i = 0; i < CHUNK; i++) c[i] = (i % 80 === 79) ? 0x0a : abc[c[i] % abc.length];
+  } else if (kind === 'pdf-letters' || kind === 'pdf-text') {
+    // Lines of PDF comments ("%…\n"), so readers skip the whole block.
+    const src = fillChunk(kind === 'pdf-letters' ? 'letters' : 'text');
+    for (let i = 0; i < CHUNK; i++) {
+      const col = i % 80;
+      c[i] = col === 0 ? 0x25 : col === 79 ? 0x0a : (src[i] === 0x0a ? 0x20 : src[i]);
+    }
   } else if (kind === 'space') {
     c.fill(0x20);
   } else if (kind === 'silence') {
@@ -113,6 +125,12 @@ function fillBytes(n, kind) {
   for (let i = 0; i < n; i += CHUNK) out.set(c.subarray(0, Math.min(CHUNK, n - i)), i);
   return out;
 }
+
+// Text files stay text: random bytes become random letters, zeros become spaces.
+const textFill = (kind) => (kind === 'zero' ? 'space' : kind === 'random' ? 'letters' : kind);
+// After the root element only whitespace and comments are allowed.
+const MARKUP = set('xml', 'svg', 'html', 'htm');
+const WHITESPACE_ONLY = set('json', 'rtf');
 
 // Bytes appended to the end of a file so it still opens.
 function trailingPadding(n, ext, kind, pdfStartxref) {
@@ -137,16 +155,36 @@ function trailingPadding(n, ext, kind, pdfStartxref) {
     const tail = encoder.encode(`\nstartxref\n${pdfStartxref}\n%%EOF\n`);
     const head = encoder.encode('\n%');
     if (n >= head.length + tail.length) {
-      return [head, ...fillParts(n - head.length - tail.length, 'space'), tail];
+      const fill = kind === 'zero' ? 'space' : kind === 'random' ? 'pdf-letters' : 'pdf-text';
+      return [head, ...fillParts(n - head.length - tail.length, fill), tail];
     }
   }
-  if (is('text', ext)) return fillParts(n, kind === 'zero' ? 'space' : kind);
+  if (MARKUP.has(ext) && kind !== 'zero') {
+    const open = encoder.encode('\n<!--\n');
+    const close = encoder.encode('\n-->\n');
+    if (n >= open.length + close.length) return [open, ...fillParts(n - open.length - close.length, textFill(kind)), close];
+  }
+  if (WHITESPACE_ONLY.has(ext)) return fillParts(n, 'space');
+  if (is('text', ext)) return fillParts(n, textFill(kind));
   return fillParts(n, kind);
 }
 
 // MP3: padding goes into an ID3v2 tag at the start (players skip it and the duration stays right).
 const ID3_MAX = 2 ** 28 - 1;
 const syncsafe = (n) => [(n >>> 21) & 0x7f, (n >>> 14) & 0x7f, (n >>> 7) & 0x7f, n & 0x7f];
+
+const PRIV_OWNER = encoder.encode('file-size-tool\0');
+
+// ID3 padding must be zeros, so other fills go into a PRIV frame (private data players skip).
+// Returns exactly n bytes, or null when n is too small for a frame.
+function id3Fill(n, version, kind) {
+  if (kind === 'zero') return fillParts(n, 'zero');
+  const body = n - 10;
+  if (body <= PRIV_OWNER.length) return null;
+  const size = version === 4 ? syncsafe(body) : [body >>> 24, (body >>> 16) & 0xff, (body >>> 8) & 0xff, body & 0xff];
+  const header = Uint8Array.from([0x50, 0x52, 0x49, 0x56, ...size, 0, 0]);
+  return [header, PRIV_OWNER, ...fillParts(body - PRIV_OWNER.length, kind)];
+}
 
 async function padMp3(blob, n, kind) {
   if (n <= 0) return blob;
@@ -156,11 +194,15 @@ async function padMp3(blob, n, kind) {
     const old = (head[6] << 21) | (head[7] << 14) | (head[8] << 7) | head[9];
     if (old + n <= ID3_MAX) {
       const header = Uint8Array.from([...head.subarray(0, 6), ...syncsafe(old + n)]);
+      // A frame must come before the old frames' trailing padding, so it goes first.
+      const plain = (head[3] === 3 || head[3] === 4) && !(head[5] & 0xc0);
+      const frame = plain ? id3Fill(n, head[3], kind) : null;
+      if (frame && kind !== 'zero') return new Blob([header, ...frame, blob.slice(10)]);
       return new Blob([header, blob.slice(10, 10 + old), ...fillParts(n, 'zero'), blob.slice(10 + old)]);
     }
   } else if (n >= 10 && n - 10 <= ID3_MAX) {
     const header = Uint8Array.from([0x49, 0x44, 0x33, 3, 0, 0, ...syncsafe(n - 10)]);
-    return new Blob([header, ...fillParts(n - 10, 'zero'), blob]);
+    return new Blob([header, ...(id3Fill(n - 10, 3, kind) ?? fillParts(n - 10, 'zero')), blob]);
   }
   return new Blob([blob, ...fillParts(n, kind)]);
 }
@@ -778,6 +820,7 @@ function bmpImage() {
   return out;
 }
 
+const HTML = '<!doctype html>\n<html lang="pl"><meta charset="utf-8"><title>Plik testowy</title><p>Plik testowy</p></html>\n';
 const RTF = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}\\f0\\fs28 Plik testowy\\par}\n';
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">'
   + '<rect width="64" height="64" fill="#2f6fed"/></svg>\n';
@@ -816,8 +859,11 @@ async function generate(ext, target, fill) {
   else if (ext === 'bmp') head = bmpImage();
   else if (ext === 'rtf') head = encoder.encode(RTF);
   else if (ext === 'svg') head = encoder.encode(SVG);
+  else if (ext === 'xml') head = encoder.encode(`${XML}<plik-testowy>Plik testowy</plik-testowy>\n`);
+  else if (ext === 'json') head = encoder.encode('{"plik": "testowy"}\n');
+  else if (ext === 'html' || ext === 'htm') head = encoder.encode(HTML);
 
-  if (!head) return { parts: fillParts(target, is('text', ext) && fill === 'zero' ? 'space' : fill), valid: is('text', ext) };
+  if (!head) return { parts: fillParts(target, is('text', ext) ? textFill(fill) : fill), valid: is('text', ext) };
   if (head.length > target) throw new Error(`Najmniejszy poprawny plik .${ext} ma ${fmtBytes(head.length)}. Wybierz większą wagę.`);
   if (ext === 'mp3') return { parts: [await padMp3(new Blob([head]), target - head.length, fill)], valid: true };
   return { parts: [head, ...trailingPadding(target - head.length, ext, fill, startxref)], valid: true };
@@ -914,6 +960,8 @@ function updateGenerateNote() {
   if (!ext) return setNote(els.gNote, 'Wpisz własne rozszerzenie, np. mp4.', 'warn');
   if (!size) return setNote(els.gNote, 'Wpisz wagę większą od zera.', 'warn');
   const exact = `Plik będzie miał dokładnie ${fmtBytes(size)}.`;
+  // Office, ZIP, JSON and RTF accept only spaces as padding, so there is nothing to choose.
+  els.gFillField.hidden = Boolean(ZIP_GENERATORS[ext]) || WHITESPACE_ONLY.has(ext);
   if (VALID_GENERATE.has(ext) || is('text', ext)) {
     setNote(els.gNote, `${exact} Dla .${ext} powstanie poprawny plik, który się otworzy (z małą zawartością testową), dopełniony do tej wagi.`);
   } else {
@@ -1031,7 +1079,7 @@ async function runGenerate() {
   const name = `${cleanStem(els.gName.value)}.${ext}`;
   startStatus(`Generuję ${name}…`);
   try {
-    const { parts, valid } = await generate(ext, target, els.gFill.value);
+    const { parts, valid } = await generate(ext, target, checked(els.gFill));
     const blob = new Blob(parts, { type: 'application/octet-stream' });
     if (blob.size !== target) throw new Error(`Błąd: wyszło ${fmtBytes(blob.size)} zamiast ${fmtBytes(target)}.`);
     showResult(blob, name, valid ? '' : 'Plik ma tylko wypełnienie, nie otworzy się w programie.');

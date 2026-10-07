@@ -126,14 +126,35 @@
         <button type="button" data-size="100" data-unit="2">100 MB</button>
         <button type="button" data-size="1" data-unit="3">1 GB</button>
       </div>
-      <label class="field">
-        <span>Zawartość (dopełnienie)</span>
-        <select id="g-fill">
-          <option value="zero">Zera (dobrze się kompresuje)</option>
-          <option value="random">Losowe bajty (nie da się skompresować)</option>
-          <option value="text">Tekst</option>
-        </select>
-      </label>
+      <div class="field" id="g-fill-field">
+        <span id="g-fill-label">Czym wypełnić plik do tej wagi</span>
+        <div class="fill" id="g-fill" role="radiogroup" aria-labelledby="g-fill-label">
+          <label>
+            <input type="radio" name="fill" value="random" checked>
+            <span class="fill-card">
+              <span class="fill-top"><code class="fill-sample" aria-hidden="true">7F A3 1C</code><em>zalecane</em></span>
+              <b>Losowe bajty</b>
+              <small>Waga zostaje ta sama także po spakowaniu.</small>
+            </span>
+          </label>
+          <label>
+            <input type="radio" name="fill" value="zero">
+            <span class="fill-card">
+              <span class="fill-top"><code class="fill-sample" aria-hidden="true">00 00 00</code></span>
+              <b>Zera</b>
+              <small>Po spakowaniu plik prawie nic nie waży.</small>
+            </span>
+          </label>
+          <label>
+            <input type="radio" name="fill" value="text">
+            <span class="fill-card">
+              <span class="fill-top"><code class="fill-sample" aria-hidden="true">Abc</code></span>
+              <b>Tekst</b>
+              <small>Czytelne zdanie, widać je po otwarciu.</small>
+            </span>
+          </label>
+        </div>
+      </div>
       <p class="note" id="g-note"></p>
       <button id="g-run" class="primary">Wygeneruj i pobierz</button>
     </section>
