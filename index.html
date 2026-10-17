@@ -104,10 +104,20 @@
         </label>
       </div>
       <div class="row nowrap">
-        <label class="field grow">
-          <span>Waga</span>
-          <input id="g-size" value="10" inputmode="decimal" autocomplete="off">
-        </label>
+        <div class="field grow">
+          <label for="g-size">Waga</label>
+          <div class="stepper">
+            <input id="g-size" value="10" inputmode="decimal" autocomplete="off">
+            <div class="stepper-btns">
+              <button type="button" data-dir="up" aria-label="Zwiększ wagę" title="Zwiększ wagę">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+              </button>
+              <button type="button" data-dir="down" aria-label="Zmniejsz wagę" title="Zmniejsz wagę">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
         <label class="field unit">
           <span>&nbsp;</span>
           <select id="g-unit" aria-label="Jednostka wagi">
@@ -168,10 +178,20 @@
         <span id="drop-sub">albo kliknij, żeby wybrać</span>
       </label>
       <div class="row nowrap">
-        <label class="field grow">
-          <span>Docelowa waga</span>
-          <input id="r-size" inputmode="decimal" autocomplete="off" placeholder="np. 90">
-        </label>
+        <div class="field grow">
+          <label for="r-size">Docelowa waga</label>
+          <div class="stepper">
+            <input id="r-size" inputmode="decimal" autocomplete="off" placeholder="np. 90">
+            <div class="stepper-btns">
+              <button type="button" data-dir="up" aria-label="Zwiększ wagę" title="Zwiększ wagę">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+              </button>
+              <button type="button" data-dir="down" aria-label="Zmniejsz wagę" title="Zmniejsz wagę">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
         <label class="field unit">
           <span>&nbsp;</span>
           <select id="r-unit" aria-label="Jednostka docelowej wagi">

@@ -22,7 +22,7 @@ Testuję aplikacje i musiałem sprawdzać, jak radzą sobie z wgrywaniem plików
 
 ## Co potrafi
 
-**Wygenerować plik o zadanej wadze, co do bajta.** Wybierasz rozszerzenie, wpisujesz wagę (z przecinkiem albo kropką, np. `95,5`) i pobierasz. Dla popularnych formatów powstaje prawdziwy plik, który się otwiera:
+**Wygenerować plik o zadanej wadze, co do bajta.** Wybierasz rozszerzenie, wpisujesz wagę (z przecinkiem albo kropką, np. `95,5`) albo zmieniasz ją strzałkami przy polu, i pobierasz. Dla popularnych formatów powstaje prawdziwy plik, który się otwiera:
 
 `pdf` `docx` `odt` `rtf` `txt` `xlsx` `csv` `ods` `pptx` `heic` `jpg` `png` `webp` `gif` `bmp` `svg` `zip`
 
@@ -34,7 +34,7 @@ Domyślnie plik jest dopełniany losowymi bajtami, których nie da się skompres
 
 **Liczyć jak Chrome i Windows.** 1 MB = 1024 KB, tak jak liczy Chrome, Windows i większość limitów uploadu. Finder liczy 1 MB = 1000 KB, więc przy wyniku strona pokazuje wagę w obu systemach.
 
-Do tego tryb jasny i ciemny, szybkie wagi jednym kliknięciem i porównanie przed/po.
+Do tego tryb jasny i ciemny, szybkie wagi jednym kliknięciem i porównanie przed/po. Strzałki przy polu wagi idą krokami dopasowanymi do liczby: przy 10 MB o 1 MB, przy 100 MB o 10 MB, przy 1 MB o 0,1 MB.
 
 ## Prywatność
 

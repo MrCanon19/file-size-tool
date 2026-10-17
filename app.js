@@ -955,6 +955,7 @@ function selectedExt() {
 }
 
 function updateGenerateNote() {
+  updateStepHints(els.gSize, els.gUnit);
   const ext = selectedExt();
   const size = parseSize(els.gSize.value, els.gUnit.value);
   if (!ext) return setNote(els.gNote, 'Wpisz własne rozszerzenie, np. mp4.', 'warn');
@@ -990,6 +991,7 @@ function resizePlan() {
 }
 
 function updateResizeNote() {
+  updateStepHints(els.rSize, els.rUnit);
   const plan = resizePlan();
   els.rRun.disabled = busy || !plan || ['none', 'same', 'unsupported'].includes(plan.kind);
   if (!plan) return setNote(els.rNote, '');
@@ -1074,6 +1076,59 @@ function onPreset(box, input, unitSelect, after) {
     after();
     markPreset(box);
   });
+}
+
+// ---------- arrow steppers ----------
+
+// One click moves the number by a step you can see: 10 MB jumps by 1, 100 MB by 10, 1 MB by 0.1.
+const STEP_LADDER = [0.1, 0.5, 1, 5, 10, 25, 50, 100, 250, 500];
+
+function stepFor(value, unit) {
+  const ideal = Math.abs(value) / 10;
+  let step = STEP_LADDER[0];
+  for (const s of STEP_LADDER) if (s <= ideal) step = s;
+  // Bytes and kilobytes come in whole numbers, so a finer step there would round away.
+  return Number(unit) <= 1 ? Math.max(1, Math.round(step)) : step;
+}
+
+// Where the arrows start when the field is empty: the file being resized, otherwise 1.
+function stepBase(input, unit) {
+  const typed = parseFloat(String(input.value).replace(',', '.').replace(/\s/g, ''));
+  if (Number.isFinite(typed) && typed > 0) return typed;
+  return input === els.rSize && currentFile ? currentFile.size / base() ** Number(unit) : 1;
+}
+
+function stepField(input, unitSelect, direction) {
+  const unit = Number(unitSelect.value);
+  const from = stepBase(input, unit);
+  const step = stepFor(from, unit);
+  let next = from + direction * step;
+  if (next < step) next = step;            // never step down to zero
+  if (unit === 0) next = Math.round(next); // bytes come in whole numbers
+  input.value = (Math.round(next * 100) / 100).toLocaleString('pl-PL', { maximumFractionDigits: 2, useGrouping: false });
+}
+
+// The buttons say what a click does, because the step follows the number in the field.
+function updateStepHints(input, unitSelect) {
+  const unit = unitSelect.value;
+  const step = stepFor(stepBase(input, unit), unit);
+  const text = `${step.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} ${unitSelect.options[unitSelect.selectedIndex].text}`;
+  const box = input.closest('.stepper');
+  for (const [dir, verb] of [['up', 'Zwiększ'], ['down', 'Zmniejsz']]) {
+    const button = box.querySelector(`[data-dir="${dir}"]`);
+    button.title = `${verb} o ${text}`;
+    button.setAttribute('aria-label', `${verb} wagę o ${text}`);
+  }
+}
+
+function wireStepper(input, unitSelect, after) {
+  const box = input.closest('.stepper');
+  for (const dir of ['up', 'down']) {
+    box.querySelector(`[data-dir="${dir}"]`).addEventListener('click', () => {
+      stepField(input, unitSelect, dir === 'up' ? 1 : -1);
+      after();
+    });
+  }
 }
 
 async function runGenerate() {
@@ -1165,21 +1220,25 @@ function setMode(value) {
 }
 
 els.mode.addEventListener('change', applyMode);
-[els.gExt, els.gSize, els.gUnit].forEach((el) => el.addEventListener('input', () => {
+const refreshGenerate = () => {
   updateGenerateNote();
   markPreset(els.gPresets);
-}));
+};
+const refreshResize = () => {
+  updateResizeNote();
+  markPreset(els.rPresets);
+};
+[els.gExt, els.gSize, els.gUnit].forEach((el) => el.addEventListener('input', refreshGenerate));
 els.gExtSelect.addEventListener('change', () => {
   els.gExtCustom.hidden = els.gExtSelect.value !== 'other';
   if (!els.gExtCustom.hidden) els.gExt.focus();
   updateGenerateNote();
 });
-[els.rSize, els.rUnit].forEach((el) => el.addEventListener('input', () => {
-  updateResizeNote();
-  markPreset(els.rPresets);
-}));
+[els.rSize, els.rUnit].forEach((el) => el.addEventListener('input', refreshResize));
 onPreset(els.gPresets, els.gSize, els.gUnit, updateGenerateNote);
 onPreset(els.rPresets, els.rSize, els.rUnit, updateResizeNote);
+wireStepper(els.gSize, els.gUnit, refreshGenerate);
+wireStepper(els.rSize, els.rUnit, refreshResize);
 els.gRun.addEventListener('click', runGenerate);
 els.rRun.addEventListener('click', runResize);
 
@@ -1272,3 +1331,4 @@ applyMode();
 els.gExtCustom.hidden = els.gExtSelect.value !== 'other';
 updateGenerateNote();
 markPreset(els.gPresets);
+updateStepHints(els.rSize, els.rUnit);
