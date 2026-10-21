@@ -110,6 +110,12 @@ Biblioteki, ładowane dopiero wtedy, gdy są potrzebne:
 
 `templates.js` zawiera małe poprawne pliki (heic, mp4, mov, mp3, gif) wygenerowane przez ffmpeg i `sips`.
 
+Przeliczanie wag, limity i dopełnianie co do bajta są w `size.js` (bez DOM), więc da się je testować w Node 20+ bez instalowania czegokolwiek:
+
+```bash
+npm test   # albo: node --test
+```
+
 Strona stoi na Netlify i jest wdrażana ręcznie (`netlify deploy --prod --dir=.`), bez łączenia repo z Netlify. Stary adres na GitHub Pages przekierowuje na nowy.
 
 ## Licencja
