@@ -116,7 +116,7 @@ Przeliczanie wag, limity i dopełnianie co do bajta są w `size.js` (bez DOM), w
 npm test   # albo: node --test
 ```
 
-Strona stoi na Netlify i jest wdrażana ręcznie (`netlify deploy --prod --dir=.`), bez łączenia repo z Netlify. Stary adres na GitHub Pages przekierowuje na nowy.
+Strona stoi na Netlify i jest wdrażana ręcznie (`npm run deploy`), bez łączenia repo z Netlify. Skrypt kopiuje stronę do `dist/` bez `tests/`, `scripts/`, `package.json` i plików z kropką, a potem wywołuje `netlify deploy --prod --dir=dist`. Stary adres na GitHub Pages przekierowuje na nowy.
 
 ## Licencja
 

@@ -2,6 +2,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "build": "node scripts/build.js",
+    "deploy": "npm run build && netlify deploy --prod --dir=dist"
   }
 }
