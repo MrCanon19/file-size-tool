@@ -260,3 +260,54 @@ test('padTo: hits the target exactly, never shrinks', async () => {
   assert.equal(await padTo(small, 3, 'txt'), small);
   assert.equal(await padTo(small, 1, 'txt'), small);
 });
+
+// ---------- przypadki brzegowe ----------
+
+test('parseSize: wartość poniżej 1 bajta, nieskończoność i wiodący śmieć nie dają wagi', () => {
+  assert.ok(!parseSize('0,4', 0)); // zaokrągla się do 0 B, plik pusty nie ma sensu
+  assert.equal(parseSize('Infinity', 2), null);
+  assert.equal(parseSize('abc12', 2), null);
+  assert.equal(parseSize('', 2), null);
+  assert.equal(parseSize('1 000,5', 1), Math.round(1000.5 * 1024));
+});
+
+test('splitName: kropka na końcu, plik ukryty, rozszerzenie wielkimi literami', () => {
+  assert.deepEqual(splitName('plik.'), { stem: 'plik', ext: '' });
+  assert.deepEqual(splitName('.gitignore'), { stem: '.gitignore', ext: '' });
+  assert.deepEqual(splitName('kopia.tar.GZ'), { stem: 'kopia.tar', ext: 'gz' });
+});
+
+// Regresja: dla 8-15 bajtów dopełnienia MP4/MOV/HEIC dostawał surowe bajty bez nagłówka
+// pudełka "free", więc czytnik brał losowe bajty za rozmiar i typ kolejnego pudełka
+test('trailingPadding: ISO-BMFF dostaje pudełko free także dla 8-15 bajtów', () => {
+  for (let n = 8; n <= 15; n++) {
+    for (const kind of ['zero', 'random']) {
+      const parts = trailingPadding(n, 'mp4', kind);
+      const all = Buffer.concat(parts);
+      assert.equal(all.length, n, `${n} ${kind}`);
+      assert.equal(all.readUInt32BE(0), n, `${n} ${kind}`);
+      assert.equal(ascii(all.subarray(4, 8)), 'free', `${n} ${kind}`);
+    }
+  }
+});
+
+test('trailingPadding: PDF za mały na komentarz albo bez startxref i tak ma dokładną długość', () => {
+  assert.equal(total(trailingPadding(10, 'pdf', 'random', '987')), 10);
+  const parts = trailingPadding(500, 'pdf', 'random', null);
+  assert.equal(total(parts), 500);
+  assert.ok(!ascii(Buffer.concat(parts)).includes('startxref'));
+});
+
+test('padMp3: tag z nagłówkiem rozszerzonym rośnie zerami, a dopełnienie poniżej 10 B idzie na koniec', async () => {
+  const tag = new Uint8Array([0x49, 0x44, 0x33, 3, 0, 0x40, ...syncsafe(4), 0, 0, 0, 0]);
+  const audio = new Uint8Array([0xff, 0xfb, 9]);
+  const out = await bytesOf(await padMp3(new Blob([tag, audio]), 300, 'random'));
+  assert.equal(out.length, tag.length + audio.length + 300);
+  assert.equal(id3Size(out), 304);
+  assert.ok(out.subarray(14, 314).every((b) => b === 0));
+  assert.deepEqual(out.subarray(-3), audio);
+
+  const small = await bytesOf(await padMp3(new Blob([audio]), 5, 'zero'));
+  assert.equal(small.length, 8);
+  assert.deepEqual(small.subarray(0, 3), audio);
+});

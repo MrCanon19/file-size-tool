@@ -111,7 +111,7 @@ const WHITESPACE_ONLY = set('json', 'rtf');
 // Bytes appended to the end of a file so it still opens.
 function trailingPadding(n, ext, kind, pdfStartxref) {
   if (n <= 0) return [];
-  if (is('isobmff', ext) && n >= 16) {
+  if (is('isobmff', ext) && n >= 8) {
     // An ISO-BMFF "free" box: players and image decoders skip it.
     const big = n > 0xffffffff;
     const head = new Uint8Array(big ? 16 : 8);
